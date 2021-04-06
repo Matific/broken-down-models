@@ -26,3 +26,10 @@ class Child(BrokenDownModel, ParentA, ParentB, ParentC):
     child_name = models.CharField(max_length=10)
 
     objects = BrokenDownManager()
+
+
+class PartialChild(BrokenDownModel, ParentA, ParentB, ParentC):
+    id = models.AutoField(primary_key=True)
+    child_name = models.CharField(max_length=10)
+    parentb_ptr = models.OneToOneField(ParentB, parent_link=True, on_delete=models.DO_NOTHING)
+    parentc_ptr = models.OneToOneField(ParentC, parent_link=True, null=True, on_delete=models.SET_NULL)

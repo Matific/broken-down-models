@@ -1,9 +1,9 @@
 from django.test import TestCase
 
-from .models import Child
+from .models import Child, PartialChild, ParentB
 
 
-class TestSelectRelated(TestCase):
+class SelectRelatedTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
@@ -53,3 +53,38 @@ class TestSelectRelated(TestCase):
             self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
             self.assertIs(c.parb_zit, True)
             self.assertEqual(c.parc_name, 'C')
+
+
+class PartialChildTestCase(TestCase):
+
+    def setUp(self):
+        super().setUp()
+        c = PartialChild.objects.create(
+            child_name='Orphan', para_name='A',
+        )
+        # TODO: reversing the order here causes unexpected behavior where parentc_ptr is not set to null
+        # (probably a Django bug)
+        c.parentc_ptr.delete()
+        c.parentb_ptr.delete()
+
+    def tearDown(self):
+        # Make the missing record not missing
+        c = PartialChild.objects.get(child_name='Orphan')
+        ParentB.objects.create(bid=c.parentb_ptr_id, parb_name='B')
+
+    def test_child_with_missing_parent_null(self):
+        """We can create a child object with parents set to null"""
+        c = PartialChild.objects.get(child_name='Orphan')
+        self.assertEqual(c.para_name, 'A')
+        self.assertEqual(c.parentc_ptr_id, None)
+        self.assertEqual(c.parc_name, None)
+
+    def test_child_with_notnull_missing_parent_raises_proper_exception(self):
+        """We can create a child object with parents set to null"""
+        c = PartialChild.objects.get(child_name='Orphan')
+        self.assertTrue(c.parentb_ptr_id)
+        with self.assertRaises(ParentB.DoesNotExist):
+            c.parb_name
+
+
+
