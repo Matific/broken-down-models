@@ -1,7 +1,9 @@
+from unittest import expectedFailure
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .models import Child, PartialChild, ParentB, UserChild
+from .models import Child, PartialChild, ParentB, UserChild, Nephew
 
 
 class SelectRelatedTestCase(TestCase):
@@ -83,7 +85,6 @@ class UserChildTestCase(TestCase):
             self.assertEqual(uc.user.username, 'artaxerxes')
 
 
-
 class PartialChildTestCase(TestCase):
 
     def setUp(self):
@@ -116,4 +117,26 @@ class PartialChildTestCase(TestCase):
             c.parb_name
 
 
+class UncleTestCase(TestCase):
+    def test_select_related_through_parent(self):
+        user = get_user_model().objects.create(username='artaxerxes')
+        child = Nephew.objects.create(parfk_user=user)
+        with self.assertNumQueries(1):
+            c = Nephew.objects.select_related('parfk_user').get(pk=child.pk)
+            self.assertEqual(c.parfk_user.username, 'artaxerxes')
 
+    @expectedFailure
+    def test_select_related_through_parent_with_id(self):
+        """
+        select-related through a parent has a subtle failure: it brings the related object and sets
+        the FK field to it, but it doesn't set the related *_id field. Consequently, if the id field
+        is accessed directly, it is fetched -- and in fact, even throws away the already-fetched
+        related object. Thus, the assertEqual() line belows, which we expect to perform no queries,
+        actually performs two -- one to get the parfk_user_id field, and then one to get
+        the parfk_user object, even though we already had it.
+        """
+        user = get_user_model().objects.create(username='artaxerxes')
+        child = Nephew.objects.create(parfk_user=user)
+        with self.assertNumQueries(1):
+            c = Nephew.objects.select_related('parfk_user').get(pk=child.pk)
+            self.assertEqual(c.parfk_user_id, c.parfk_user.id)
