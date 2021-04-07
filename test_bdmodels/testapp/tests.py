@@ -1,13 +1,14 @@
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .models import Child, PartialChild, ParentB
+from .models import Child, PartialChild, ParentB, UserChild
 
 
 class SelectRelatedTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
-        Child.objects.create(para_name='A', parb_name='B', parc_name='C', child_name='Xerces')
+        Child.objects.create(para_name='A', parb_name='B', parc_name='C', child_name='Xerxes')
 
     def test_parents_not_joined_by_default(self):
         """
@@ -15,7 +16,7 @@ class SelectRelatedTestCase(TestCase):
         Accessing parent fields requires further database queries.
         """
         with self.assertNumQueries(4):
-            c = Child.objects.get(child_name='Xerces')
+            c = Child.objects.get(child_name='Xerxes')
             parents = [c.para_name, c.parb_name, c.parc_name]
             self.assertEqual("".join(parents), "ABC")
 
@@ -25,7 +26,7 @@ class SelectRelatedTestCase(TestCase):
         fields from that parent (and only them) are fetched with it.
         """
         with self.assertNumQueries(2):
-            c = Child.objects.get(child_name='Xerces')
+            c = Child.objects.get(child_name='Xerxes')
             self.assertIs(c.para_zit, True)
         with self.assertNumQueries(0):
             self.assertEqual(c.para_name, 'A')
@@ -39,7 +40,7 @@ class SelectRelatedTestCase(TestCase):
     def test_select_related_single_direct(self):
         """select_related() with a single, immediate parent link, joins the parent to the selection"""
         with self.assertNumQueries(1):
-            c = Child.objects.select_related('parenta_ptr').get(child_name='Xerces')
+            c = Child.objects.select_related('parenta_ptr').get(child_name='Xerxes')
             self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
         with self.assertNumQueries(1):
             self.assertIs(c.parb_zit, True)
@@ -49,10 +50,38 @@ class SelectRelatedTestCase(TestCase):
     def test_select_related_all_direct(self):
         """select_related() with no arguments joins all the parents to the selection"""
         with self.assertNumQueries(1):
-            c = Child.objects.select_related().get(child_name='Xerces')
+            c = Child.objects.select_related().get(child_name='Xerxes')
             self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
             self.assertIs(c.parb_zit, True)
             self.assertEqual(c.parc_name, 'C')
+
+    def test_select_related_non_parent(self):
+        user = get_user_model().objects.create(username='artaxerxes')
+        c = Child.objects.get(child_name='Xerxes')
+        c.user = user
+        c.save()
+        with self.assertNumQueries(1):
+            cc = Child.objects.select_related('user').get(child_name='Xerxes')
+            self.assertEqual(cc.user.username, 'artaxerxes')
+
+
+class UserChildTestCase(TestCase):
+
+    def setUp(self):
+        super().setUp()
+        user = get_user_model().objects.create(username='artaxerxes')
+        UserChild.objects.create(para_name='A', parb_name='B', parc_name='C', child_name='Xerxes', user=user)
+
+    def test_select_related_non_parent(self):
+        with self.assertNumQueries(1):
+            uc = UserChild.objects.select_related('user').get(child_name='Xerxes')
+            self.assertEqual(uc.user.username, 'artaxerxes')
+        with self.assertNumQueries(1):
+            # Note: We can do this with UserChild, it doesn't work with Child because its
+            # FK to User is nullable and the empty select_related() doesn't collect nullable FKs.
+            uc = UserChild.objects.select_related().get(child_name='Xerxes')
+            self.assertEqual(uc.user.username, 'artaxerxes')
+
 
 
 class PartialChildTestCase(TestCase):

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from bdmodels.models import BrokenDownModel, BrokenDownManager
@@ -24,8 +25,13 @@ class ParentC(models.Model):
 class Child(BrokenDownModel, ParentA, ParentB, ParentC):
     id = models.AutoField(primary_key=True)
     child_name = models.CharField(max_length=10)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.CASCADE)
 
-    objects = BrokenDownManager()
+
+class UserChild(BrokenDownModel, ParentA, ParentB, ParentC):
+    id = models.AutoField(primary_key=True)
+    child_name = models.CharField(max_length=10)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # unlike above, not nullable
 
 
 class PartialChild(BrokenDownModel, ParentA, ParentB, ParentC):
