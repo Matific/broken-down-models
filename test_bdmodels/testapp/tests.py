@@ -17,10 +17,11 @@ class SelectRelatedTestCase(TestCase):
         By default, fetching a broken-down model selects only the child fields.
         Accessing parent fields requires further database queries.
         """
-        with self.assertNumQueries(4):
+        with self.assertNumQueries(1):
             c = Child.objects.get(child_name='Xerxes')
+        with self.assertNumQueries(3):
             parents = [c.para_name, c.parb_name, c.parc_name]
-            self.assertEqual("".join(parents), "ABC")
+        self.assertEqual("".join(parents), "ABC")
 
     def test_field_access_fetches_whole_parent(self):
         """
