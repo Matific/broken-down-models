@@ -1,6 +1,9 @@
 import itertools
 
-from django.db import models
+from django.core import checks
+from django.db import models, transaction, router
+from django.db.models.options import Options
+from django.utils.functional import cached_property
 
 
 def get_field_names_to_fetch(model_set):
@@ -70,7 +73,35 @@ class BrokenDownManager(models.Manager.from_queryset(BrokenDownQuerySet)):
         return super().get_queryset().update_fetched_parents({}, force_update_deferrals=True)
 
 
-class BrokenDownModel(models.Model):
+class BrokenDownOptions(Options):
+    @cached_property
+    def _forward_fields_map(self):
+        res = {}
+        fields = self._get_fields(reverse=False)
+        for field in fields:
+            res[field.name] = field
+            # Due to the way Django's internals work, get_field() should also
+            # be able to fetch a field by attname. In the case of a concrete
+            # field with relation, includes the *_id name too
+
+            # except for fields which share attributes, we don't want them in this game
+            if getattr(field, 'can_share_attribute', False):
+                continue
+            try:
+                res[field.attname] = field
+            except AttributeError:
+                pass
+        return res
+
+
+class BrokenDownModelBase(models.base.ModelBase):
+    def __new__(cls, *args, **kwargs):
+        new_model = super().__new__(cls, *args, **kwargs)
+        new_model._meta.__class__ = BrokenDownOptions
+        return new_model
+
+
+class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
 
     class Meta:
         abstract = True
@@ -84,3 +115,156 @@ class BrokenDownModel(models.Model):
             parents = set(opts.get_field(name).model for name in fields)
             fields = get_field_names_to_fetch(parents)
         super().refresh_from_db(using, fields)
+
+    @classmethod
+    def _check_field_name_clashes(cls):
+        """Forbid field shadowing in multi-table inheritance."""
+        errors = []
+        used_fields = {}  # name or attname -> field
+
+        # Check that multi-inheritance doesn't cause field name shadowing.
+        # This is copied verbatim from standard Model.
+        for parent in cls._meta.get_parent_list():
+            for f in parent._meta.local_fields:
+                clash = used_fields.get(f.name) or used_fields.get(f.attname) or None
+                if clash:
+                    errors.append(
+                        checks.Error(
+                            "The field '%s' from parent model "
+                            "'%s' clashes with the field '%s' "
+                            "from parent model '%s'." % (
+                                clash.name, clash.model._meta,
+                                f.name, f.model._meta
+                            ),
+                            obj=cls,
+                            id='models.E005',
+                        )
+                    )
+                used_fields[f.name] = f
+                used_fields[f.attname] = f
+
+        # Check that fields defined in the model don't clash with fields from
+        # parents, including auto-generated fields like multi-table inheritance
+        # child accessors.
+
+        for parent in cls._meta.get_parent_list():
+            for f in parent._meta.get_fields():
+                if f not in used_fields:
+                    used_fields[f.name] = f
+
+        for f in cls._meta.local_fields:
+            # This is the change from standard Model.
+            # Original says: clash = used_fields.get(f.name) or used_fields.get(f.attname) or None
+            clash = used_fields.get(f.name) or None
+            if (not clash) and not getattr(f, 'can_share_attribute', False):
+                clash = used_fields.get(f.attname) or None
+            # Note that we may detect clash between user-defined non-unique
+            # field "id" and automatically added unique field "id", both
+            # defined at the same model. This special case is considered in
+            # _check_id_field and here we ignore it.
+            id_conflict = f.name == "id" and clash and clash.name == "id" and clash.model == cls
+            if clash and not id_conflict:
+                errors.append(
+                    checks.Error(
+                        "The field '%s' clashes with the field '%s' "
+                        "from model '%s'." % (
+                            f.name, clash.name, clash.model._meta
+                        ),
+                        obj=f,
+                        id='models.E006',
+                    )
+                )
+            used_fields[f.name] = f
+            used_fields[f.attname] = f
+
+        return errors
+
+    @classmethod
+    def _check_column_name_clashes(cls):
+        # Store a list of column names which have already been used by other fields.
+        used_column_names = []
+        errors = []
+
+        for f in cls._meta.local_fields:
+            # This is the change from standard Model.
+            # We don't want attribute-sharing fields to play here
+            if getattr(f, 'can_share_attribute', False):
+                continue
+            # From here on, as parent
+            _, column_name = f.get_attname_column()
+
+            # Ensure the column name is not already in use.
+            if column_name and column_name in used_column_names:
+                errors.append(
+                    checks.Error(
+                        "Field '%s' has column name '%s' that is used by "
+                        "another field." % (f.name, column_name),
+                        hint="Specify a 'db_column' for the field.",
+                        obj=cls,
+                        id='models.E007'
+                    )
+                )
+            else:
+                used_column_names.append(column_name)
+
+        return errors
+
+    ### We still keep this commented out here, until a final decision on VirtualForeignKey
+    #
+    # def save_base(self, *, force_insert=False, **kwargs):
+    #     if force_insert or self.pk is None:
+    #         # We need to reverse the order that saving is usually done for the case of inserting.
+    #         # First save ourselves (and get an id), only then save parents
+    #         self._reversed_save_base(force_insert=force_insert, **kwargs)
+    #     else:
+    #         super().save_base(force_insert=force_insert, **kwargs)
+    #
+    # save_base.alters_data = True
+    #
+    # def _reversed_save_base(self, raw=False, force_insert=False,
+    #                         force_update=False, using=None, update_fields=None):
+    #     """
+    #     The 'raw' argument is telling save_base not to save any parent
+    #     models and not to do any changes to the values before save. This
+    #     is used by fixture loading.
+    #     """
+    #     from django.db.models.signals import pre_save, post_save
+    #
+    #     using = using or router.db_for_write(self.__class__, instance=self)
+    #     assert not (force_insert and (force_update or update_fields))
+    #     assert update_fields is None or update_fields
+    #     cls = origin = self.__class__
+    #     # Skip proxies, but keep the origin as the proxy model.
+    #     if cls._meta.proxy:
+    #         cls = cls._meta.concrete_model
+    #     meta = cls._meta
+    #     if not meta.auto_created:
+    #         pre_save.send(
+    #             sender=origin, instance=self, raw=raw, using=using,
+    #             update_fields=update_fields,
+    #         )
+    #     # A transaction isn't needed if one query is issued.
+    #     if meta.parents:
+    #         context_manager = transaction.atomic(using=using, savepoint=False)
+    #     else:
+    #         context_manager = transaction.mark_for_rollback_on_error(using=using)
+    #     with context_manager:
+    #         # In this block we change the order of calls
+    #         updated = self._save_table(
+    #             raw, cls, force_insert,
+    #             force_update, using, update_fields,
+    #         )
+    #         if not raw:
+    #             self._save_parents(cls, using, update_fields)
+    #     # Store the database on which the object was saved
+    #     self._state.db = using
+    #     # Once saved, this is no longer a to-be-added instance.
+    #     self._state.adding = False
+    #
+    #     # Signal that the save is complete
+    #     if not meta.auto_created:
+    #         post_save.send(
+    #             sender=origin, instance=self, created=(not updated),
+    #             update_fields=update_fields, raw=raw, using=using,
+    #         )
+    #
