@@ -1,7 +1,7 @@
 import itertools
 
 from django.core import checks
-from django.db import models, transaction, router
+from django.db import models
 from django.db.models.options import Options
 from django.utils.functional import cached_property
 
@@ -117,6 +117,13 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         super().refresh_from_db(using, fields)
 
     @classmethod
+    def check(cls, **kwargs):
+        return [
+            *super().check(**kwargs),
+            *cls._check_nonvirtual_parents(),
+        ]
+
+    @classmethod
     def _check_field_name_clashes(cls):
         """Forbid field shadowing in multi-table inheritance."""
         errors = []
@@ -209,62 +216,82 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
 
         return errors
 
-    ### We still keep this commented out here, until a final decision on VirtualForeignKey
-    #
-    # def save_base(self, *, force_insert=False, **kwargs):
-    #     if force_insert or self.pk is None:
-    #         # We need to reverse the order that saving is usually done for the case of inserting.
-    #         # First save ourselves (and get an id), only then save parents
-    #         self._reversed_save_base(force_insert=force_insert, **kwargs)
-    #     else:
-    #         super().save_base(force_insert=force_insert, **kwargs)
-    #
-    # save_base.alters_data = True
-    #
-    # def _reversed_save_base(self, raw=False, force_insert=False,
-    #                         force_update=False, using=None, update_fields=None):
-    #     """
-    #     The 'raw' argument is telling save_base not to save any parent
-    #     models and not to do any changes to the values before save. This
-    #     is used by fixture loading.
-    #     """
-    #     from django.db.models.signals import pre_save, post_save
-    #
-    #     using = using or router.db_for_write(self.__class__, instance=self)
-    #     assert not (force_insert and (force_update or update_fields))
-    #     assert update_fields is None or update_fields
-    #     cls = origin = self.__class__
-    #     # Skip proxies, but keep the origin as the proxy model.
-    #     if cls._meta.proxy:
-    #         cls = cls._meta.concrete_model
-    #     meta = cls._meta
-    #     if not meta.auto_created:
-    #         pre_save.send(
-    #             sender=origin, instance=self, raw=raw, using=using,
-    #             update_fields=update_fields,
-    #         )
-    #     # A transaction isn't needed if one query is issued.
-    #     if meta.parents:
-    #         context_manager = transaction.atomic(using=using, savepoint=False)
-    #     else:
-    #         context_manager = transaction.mark_for_rollback_on_error(using=using)
-    #     with context_manager:
-    #         # In this block we change the order of calls
-    #         updated = self._save_table(
-    #             raw, cls, force_insert,
-    #             force_update, using, update_fields,
-    #         )
-    #         if not raw:
-    #             self._save_parents(cls, using, update_fields)
-    #     # Store the database on which the object was saved
-    #     self._state.db = using
-    #     # Once saved, this is no longer a to-be-added instance.
-    #     self._state.adding = False
-    #
-    #     # Signal that the save is complete
-    #     if not meta.auto_created:
-    #         post_save.send(
-    #             sender=origin, instance=self, created=(not updated),
-    #             update_fields=update_fields, raw=raw, using=using,
-    #         )
-    #
+    @classmethod
+    def _check_nonvirtual_parents(cls):
+        """Non-virtual MTI parents do not work for broken-down models"""
+        errors = [
+            checks.Error(
+                f"Field '{f.name}' is a link to a parent model (using MTI) but is not a virtual field. "
+                f"This is not supported in Broken-Down Models.",
+                hint="Define a VirtualOneToOneField for the parent link",
+                obj=cls,
+                id='bdmodels.E003'
+            )
+            for f in cls._meta.local_fields
+            if (
+                    isinstance(f, models.OneToOneField) and
+                    (f.auto_created or getattr(f, 'parent_link', False)) and
+                    not getattr(f, 'can_share_attribute', False)
+            )
+        ]
+        return errors
+
+    def save_base(self, *, force_insert=False, **kwargs):
+        if force_insert or self.pk is None:
+            # We need to reverse the order that saving is usually done for the case of inserting.
+            # First save ourselves (and get an id), only then save parents
+            self._reversed_save_base(force_insert=force_insert, **kwargs)
+        else:
+            super().save_base(force_insert=force_insert, **kwargs)
+
+    save_base.alters_data = True
+
+    def _reversed_save_base(self, raw=False, force_insert=False,
+                            force_update=False, using=None, update_fields=None):
+        """
+        The 'raw' argument is telling save_base not to save any parent
+        models and not to do any changes to the values before save. This
+        is used by fixture loading.
+        """
+        from django.db.models.signals import pre_save, post_save
+
+        from django.db import router, transaction
+
+        using = using or router.db_for_write(self.__class__, instance=self)
+        assert not (force_insert and (force_update or update_fields))
+        assert update_fields is None or update_fields
+        cls = origin = self.__class__
+        # Skip proxies, but keep the origin as the proxy model.
+        if cls._meta.proxy:
+            cls = cls._meta.concrete_model
+        meta = cls._meta
+        if not meta.auto_created:
+            pre_save.send(
+                sender=origin, instance=self, raw=raw, using=using,
+                update_fields=update_fields,
+            )
+        # A transaction isn't needed if one query is issued.
+        if meta.parents:
+            context_manager = transaction.atomic(using=using, savepoint=False)
+        else:
+            context_manager = transaction.mark_for_rollback_on_error(using=using)
+        with context_manager:
+            # In this block we change the order of calls
+            updated = self._save_table(
+                raw, cls, force_insert,
+                force_update, using, update_fields,
+            )
+            if not raw:
+                self._save_parents(cls, using, update_fields)
+        # Store the database on which the object was saved
+        self._state.db = using
+        # Once saved, this is no longer a to-be-added instance.
+        self._state.adding = False
+
+        # Signal that the save is complete
+        if not meta.auto_created:
+            post_save.send(
+                sender=origin, instance=self, created=(not updated),
+                update_fields=update_fields, raw=raw, using=using,
+            )
+

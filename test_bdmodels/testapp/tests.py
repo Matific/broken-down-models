@@ -1,9 +1,12 @@
-from unittest import expectedFailure
+from unittest import expectedFailure, skipUnless
 
 from django.contrib.auth import get_user_model
+from django.db import models
 from django.test import TestCase
+from django.test.utils import isolate_apps
 
-from .models import Child, PartialChild, ParentB, UserChild, Nephew, VirtualChild
+from bdmodels.fields import VirtualOneToOneField
+from .models import BrokenDownModel, Child, UserChild, Nephew
 
 
 class SelectRelatedTestCase(TestCase):
@@ -88,36 +91,95 @@ class UserChildTestCase(TestCase):
             self.assertEqual(uc.user.username, 'artaxerxes')
 
 
-class PartialChildTestCase(TestCase):
+@isolate_apps('testapp')
+class InvalidModelsTestCase(TestCase):
 
-    def setUp(self):
-        super().setUp()
-        c = PartialChild.objects.create(
-            child_name='Orphan', para_name='A',
+    @classmethod
+    def setUpParent(cls):
+        """This doesn't work as `setUpTestData()`. apparently the isolate_apps() decorator is applied per-method"""
+        class Parent(models.Model):
+            parent_id = models.BigAutoField(primary_key=True)
+        cls.Parent = Parent
+
+    def test_on_delete_set_null(self):
+        self.setUpParent()
+
+        class ChangeOnDeleteChild(BrokenDownModel, self.Parent):
+            id = models.AutoField(primary_key=True)
+            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.SET_NULL)
+
+        errors = ChangeOnDeleteChild.check()
+        self.assertEqual(len(errors), 1)
+        error = errors[0]
+        self.assertEqual(error.id, 'bdmodels.E002')
+        self.assertEqual(
+            error.msg,
+            'A shared reference field specifies an on_delete rule which would make it change automatically.'
         )
-        # TODO: reversing the order here causes unexpected behavior where parentc_ptr is not set to null
-        # (probably a Django bug)
-        c.parentc_ptr.delete()
-        c.parentb_ptr.delete()
+        self.assertEqual(error.obj.model, ChangeOnDeleteChild)
+        self.assertEqual(error.obj.name, 'parent_ptr')
 
-    def tearDown(self):
-        # Make the missing record not missing
-        c = PartialChild.objects.get(child_name='Orphan')
-        ParentB.objects.create(bid=c.parentb_ptr_id, parb_name='B')
+    def test_on_delete_set_default(self):
+        self.setUpParent()
 
-    def test_child_with_missing_parent_null(self):
-        """We can create a child object with parents set to null"""
-        c = PartialChild.objects.get(child_name='Orphan')
-        self.assertEqual(c.para_name, 'A')
-        self.assertEqual(c.parentc_ptr_id, None)
-        self.assertEqual(c.parc_name, None)
+        class ChangeOnDeleteChild(BrokenDownModel, self.Parent):
+            id = models.AutoField(primary_key=True)
+            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.SET_DEFAULT)
 
-    def test_child_with_notnull_missing_parent_raises_proper_exception(self):
-        """We can create a child object with parents set to null"""
-        c = PartialChild.objects.get(child_name='Orphan')
-        self.assertTrue(c.parentb_ptr_id)
-        with self.assertRaises(ParentB.DoesNotExist):
-            c.parb_name
+        errors = ChangeOnDeleteChild.check()
+        self.assertEqual(len(errors), 1)
+        error = errors[0]
+        self.assertEqual(error.id, 'bdmodels.E002')
+        self.assertEqual(
+            error.msg,
+            'A shared reference field specifies an on_delete rule which would make it change automatically.'
+        )
+        self.assertEqual(error.obj.model, ChangeOnDeleteChild)
+        self.assertEqual(error.obj.name, 'parent_ptr')
+
+    def test_on_delete_do_nothing(self):
+        self.setUpParent()
+
+        class ValidOnDeleteChild(BrokenDownModel, self.Parent):
+            id = models.AutoField(primary_key=True)
+            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+
+        errors = ValidOnDeleteChild.check()
+        self.assertEqual(len(errors), 0)
+
+    def test_on_delete_protect(self):
+        self.setUpParent()
+
+        class ValidOnDelete(BrokenDownModel, self.Parent):
+            id = models.AutoField(primary_key=True)
+            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.PROTECT)
+
+        errors = ValidOnDelete.check()
+        self.assertEqual(len(errors), 0)
+
+    @skipUnless(hasattr(models, 'RESTRICT'), "RESTRICT does not exist in this version of Django")
+    def test_on_delete_restrict(self):
+        self.setUpParent()
+
+        class ValidOnDeleteChild(BrokenDownModel, self.Parent):
+            id = models.AutoField(primary_key=True)
+            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models)
+
+        errors = ValidOnDeleteChild.check()
+        self.assertEqual(len(errors), 0)
+
+    def test_nonvirtual_parent(self):
+        self.setUpParent()
+
+        class NonVirtualChild(BrokenDownModel, self.Parent):
+            id = models.AutoField(primary_key=True)
+
+        errors = NonVirtualChild.check()
+        self.assertEqual(len(errors), 1)
+        error = errors[0]
+        self.assertEqual(error.id, 'bdmodels.E003')
+        self.assertEqual(error.obj, NonVirtualChild)
+        self.assertTrue(error.msg.startswith("Field 'parent_ptr'"))
 
 
 class UncleTestCase(TestCase):
@@ -143,8 +205,3 @@ class UncleTestCase(TestCase):
         with self.assertNumQueries(1):
             c = Nephew.objects.select_related('parfk_user').get(pk=child.pk)
             self.assertEqual(c.parfk_user_id, c.parfk_user.id)
-
-
-class VirtualSelectRelatedTestCase(SelectRelatedTestCase):
-
-    ChildClass = VirtualChild
