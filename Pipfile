@@ -9,6 +9,7 @@ django = "<3"
 [dev-packages]
 ipython = "*"
 flake8 = "*"
+build = "*"
 
 [requires]
 python_version = "3.7"

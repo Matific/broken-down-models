@@ -19,6 +19,10 @@ docs/_templates
 .settings/org.eclipse.core.resources.prefs
 .tmp
 .pytest_cache/*
+build/*
+dist/*
+*.egg-info/*
+db.sqlite3
 
 .ropeproject
 .gitconfig
