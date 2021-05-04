@@ -190,15 +190,15 @@ class UncleTestCase(TestCase):
             c = Nephew.objects.select_related('parfk_user').get(pk=child.pk)
             self.assertEqual(c.parfk_user.username, 'artaxerxes')
 
-    @expectedFailure
     def test_select_related_through_parent_with_id(self):
         """
-        select-related through a parent has a subtle failure: it brings the related object and sets
-        the FK field to it, but it doesn't set the related *_id field. Consequently, if the id field
-        is accessed directly, it is fetched -- and in fact, even throws away the already-fetched
-        related object. Thus, the assertEqual() line belows, which we expect to perform no queries,
-        actually performs two -- one to get the parfk_user_id field, and then one to get
-        the parfk_user object, even though we already had it.
+        select-related through a parent had a subtle failure: it brought the related object and set
+        the FK field to it, but it didn't set the related *_id field. Consequently, if the id field
+        was accessed directly, it was fetched -- and in fact, even threw away the already-fetched
+        related object. Thus, the assertEqual() line below, which we expected to perform no queries,
+        actually performed two -- one to get the parfk_user_id field, and then one to get
+        the parfk_user object.
+        Now, it sets everything properly
         """
         user = get_user_model().objects.create(username='artaxerxes')
         child = Nephew.objects.create(parfk_user=user)

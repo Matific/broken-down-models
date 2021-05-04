@@ -34,14 +34,21 @@ class BrokenDownQuerySet(models.QuerySet):
         """
         if fields:
             with_parents = set(self._with_parents)
+            field_heads = set(field.split('__', 1)[0] for field in fields)
             for parent, link in self.model._meta.parents.items():
                 if parent in with_parents:
                     continue
                 ptr_name = link.name
-                for field in fields:
-                    if field == ptr_name or field.startswith(f'{ptr_name}__'):
+                for field in field_heads:
+                    if field == ptr_name:
                         with_parents.add(parent)
                         break
+                    else:
+                        field_obj = self.model._meta.get_field(field)
+                        if field_obj.model == parent:
+                            with_parents.add(parent)
+                            break
+
             this = self.update_fetched_parents(with_parents)
             return super(BrokenDownQuerySet, this).select_related(*fields)
         else:
