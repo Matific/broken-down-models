@@ -1,3 +1,5 @@
+import warnings
+
 from django.core import checks, exceptions
 from django.db.models import (
     ForeignKey, OneToOneField,
@@ -49,7 +51,7 @@ class VirtualForeignKey(ForeignKey):
     def __init__(self, to, from_field, on_delete,
                  related_name=None, related_query_name=None,
                  limit_choices_to=None, parent_link=False, to_field=None,
-                 db_constraint=True, **kwargs):
+                 db_constraint=False, **kwargs):
         try:
             to._meta.model_name
         except AttributeError:
@@ -69,6 +71,24 @@ class VirtualForeignKey(ForeignKey):
 
         if 'default' in kwargs:
             raise ValueError("Virtual field cannot have a default")
+        if 'editable' in kwargs:
+            if kwargs['editable']:
+                raise ValueError("Virtual field cannot be editable")
+            else:
+                warnings.warn("Virtual fields cannot be editable, editable=False is redundant")
+        kwargs['editable'] = False
+        if 'db_index' in kwargs:
+            if kwargs['db_index']:
+                raise ValueError(
+                    f"Virtual field cannot create an index; add indexing on the concrete field "
+                    f"({from_field}) instead"
+                )
+            else:
+                warnings.warn("Virtual fields cannot have indexes, db_index=False is redundant")
+        kwargs['db_index'] = False
+        if db_constraint:
+            warnings.warn("Constraints on virtual fields are not implemented yet")
+            db_constraint = False
 
         kwargs['rel'] = self.rel_class(
             self, to, to_field,
@@ -78,7 +98,6 @@ class VirtualForeignKey(ForeignKey):
             parent_link=parent_link,
             on_delete=on_delete,
         )
-        kwargs['editable'] = False
         super(ForeignKey, self).__init__(to, on_delete, from_fields=['self'], to_fields=[to_field], **kwargs)
 
         self.db_constraint = db_constraint
@@ -125,18 +144,16 @@ class VirtualForeignKey(ForeignKey):
         else:
             return []
 
-    # Suspected equivalent: n,p,a,kw=super().deconstruct(); kw['from_field']=self.from_field
     def deconstruct(self):
         name, path, args, kwargs = super(ForeignKey, self).deconstruct()
         del kwargs['to_fields']
         del kwargs['from_fields']
         # Handle the simpler arguments
         kwargs['from_field'] = self.from_field
-        if self.db_index:
-            del kwargs['db_index']
-        else:
-            kwargs['db_index'] = False
-        if self.db_constraint is not True:
+        kwargs.pop('db_index', None)
+        del kwargs['editable']
+        if self.db_constraint is not False:
+            # For future use...
             kwargs['db_constraint'] = self.db_constraint
         # Rel needs more work.
         to_meta = getattr(self.remote_field.model, "_meta", None)

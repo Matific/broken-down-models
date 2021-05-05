@@ -1,8 +1,5 @@
 Project TODO
 ------------
-Migrations:
- - an AddVirtualField operation (just SeparateModelAndState over AddField)
- - Fix deconstruct to remove the unnecessary params (``db_index`` and ``editable``)
 
 
 General Idea

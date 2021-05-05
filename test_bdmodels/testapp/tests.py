@@ -1,12 +1,7 @@
-from unittest import expectedFailure, skipUnless
-
 from django.contrib.auth import get_user_model
-from django.db import models
 from django.test import TestCase
-from django.test.utils import isolate_apps
 
-from bdmodels.fields import VirtualOneToOneField
-from .models import BrokenDownModel, Child, UserChild, Nephew
+from .models import Child, UserChild, Nephew
 
 
 class SelectRelatedTestCase(TestCase):
@@ -89,97 +84,6 @@ class UserChildTestCase(TestCase):
             # FK to User is nullable and the empty select_related() doesn't collect nullable FKs.
             uc = UserChild.objects.select_related().get(child_name='Xerxes')
             self.assertEqual(uc.user.username, 'artaxerxes')
-
-
-@isolate_apps('testapp')
-class InvalidModelsTestCase(TestCase):
-
-    @classmethod
-    def setUpParent(cls):
-        """This doesn't work as `setUpTestData()`. apparently the isolate_apps() decorator is applied per-method"""
-        class Parent(models.Model):
-            parent_id = models.BigAutoField(primary_key=True)
-        cls.Parent = Parent
-
-    def test_on_delete_set_null(self):
-        self.setUpParent()
-
-        class ChangeOnDeleteChild(BrokenDownModel, self.Parent):
-            id = models.AutoField(primary_key=True)
-            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.SET_NULL)
-
-        errors = ChangeOnDeleteChild.check()
-        self.assertEqual(len(errors), 1)
-        error = errors[0]
-        self.assertEqual(error.id, 'bdmodels.E002')
-        self.assertEqual(
-            error.msg,
-            'A shared reference field specifies an on_delete rule which would make it change automatically.'
-        )
-        self.assertEqual(error.obj.model, ChangeOnDeleteChild)
-        self.assertEqual(error.obj.name, 'parent_ptr')
-
-    def test_on_delete_set_default(self):
-        self.setUpParent()
-
-        class ChangeOnDeleteChild(BrokenDownModel, self.Parent):
-            id = models.AutoField(primary_key=True)
-            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.SET_DEFAULT)
-
-        errors = ChangeOnDeleteChild.check()
-        self.assertEqual(len(errors), 1)
-        error = errors[0]
-        self.assertEqual(error.id, 'bdmodels.E002')
-        self.assertEqual(
-            error.msg,
-            'A shared reference field specifies an on_delete rule which would make it change automatically.'
-        )
-        self.assertEqual(error.obj.model, ChangeOnDeleteChild)
-        self.assertEqual(error.obj.name, 'parent_ptr')
-
-    def test_on_delete_do_nothing(self):
-        self.setUpParent()
-
-        class ValidOnDeleteChild(BrokenDownModel, self.Parent):
-            id = models.AutoField(primary_key=True)
-            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.DO_NOTHING)
-
-        errors = ValidOnDeleteChild.check()
-        self.assertEqual(len(errors), 0)
-
-    def test_on_delete_protect(self):
-        self.setUpParent()
-
-        class ValidOnDelete(BrokenDownModel, self.Parent):
-            id = models.AutoField(primary_key=True)
-            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models.PROTECT)
-
-        errors = ValidOnDelete.check()
-        self.assertEqual(len(errors), 0)
-
-    @skipUnless(hasattr(models, 'RESTRICT'), "RESTRICT does not exist in this version of Django")
-    def test_on_delete_restrict(self):
-        self.setUpParent()
-
-        class ValidOnDeleteChild(BrokenDownModel, self.Parent):
-            id = models.AutoField(primary_key=True)
-            parent_ptr = VirtualOneToOneField(self.Parent, 'id', parent_link=True, on_delete=models)
-
-        errors = ValidOnDeleteChild.check()
-        self.assertEqual(len(errors), 0)
-
-    def test_nonvirtual_parent(self):
-        self.setUpParent()
-
-        class NonVirtualChild(BrokenDownModel, self.Parent):
-            id = models.AutoField(primary_key=True)
-
-        errors = NonVirtualChild.check()
-        self.assertEqual(len(errors), 1)
-        error = errors[0]
-        self.assertEqual(error.id, 'bdmodels.E003')
-        self.assertEqual(error.obj, NonVirtualChild)
-        self.assertTrue(error.msg.startswith("Field 'parent_ptr'"))
 
 
 class UncleTestCase(TestCase):
