@@ -50,3 +50,30 @@ class Nephew(BrokenDownModel, ParentA, ParentWithFK):
     id = models.AutoField(primary_key=True)
     parentwithfk_ptr = VirtualOneToOneField(ParentWithFK, 'id', parent_link=True, on_delete=models.DO_NOTHING)
     parenta_ptr = VirtualOneToOneField(ParentA, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+
+
+class TimeStampMixin(models.Model):
+    """Adds timestamps to inheriting models."""
+
+    class Meta:
+        abstract = True
+
+    created_on = models.DateTimeField(
+        'created on',
+        db_index=True,
+        auto_now_add=True,
+        editable=False, )
+
+    last_modified = models.DateTimeField(
+        'last modified',
+        auto_now=True,
+        editable=False, )
+
+
+class TimeStampedChild(BrokenDownModel, TimeStampMixin, ParentA, ParentB, ParentC):
+    id = models.AutoField(primary_key=True)
+    parenta_ptr = VirtualOneToOneField(ParentA, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+    parentb_ptr = VirtualOneToOneField(ParentB, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+    parentc_ptr = VirtualOneToOneField(ParentC, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+    child_name = models.CharField(max_length=10)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.CASCADE)

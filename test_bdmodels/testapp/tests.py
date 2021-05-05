@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .models import Child, UserChild, Nephew
+from .models import Child, UserChild, Nephew, TimeStampedChild
 
 
 class SelectRelatedTestCase(TestCase):
@@ -66,6 +66,21 @@ class SelectRelatedTestCase(TestCase):
         with self.assertNumQueries(1):
             cc = self.ChildClass.objects.select_related('user').get(child_name='Xerxes')
             self.assertEqual(cc.user.username, 'artaxerxes')
+
+
+class AbstractBaseClassTestCase(SelectRelatedTestCase):
+
+    ChildClass = TimeStampedChild
+
+    def test_the_abstract_base_works(self):
+        # Make sure the last_modified field changes. Note we cannot compare to created_on
+        # because it has its value filled in separately, so it starts out different from
+        # last_modified (each gets a separate `timezone.now()` call).
+        c = self.ChildClass.objects.get(child_name='Xerxes')
+        orig_last_modified = c.last_modified
+        c.child_name = 'Cyrus'
+        c.save()
+        self.assertNotEqual(orig_last_modified, c.last_modified)
 
 
 class UserChildTestCase(TestCase):
