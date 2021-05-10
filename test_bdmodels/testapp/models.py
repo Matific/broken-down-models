@@ -77,3 +77,11 @@ class TimeStampedChild(BrokenDownModel, TimeStampMixin, ParentA, ParentB, Parent
     parentc_ptr = VirtualOneToOneField(ParentC, 'id', parent_link=True, on_delete=models.DO_NOTHING)
     child_name = models.CharField(max_length=10)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.CASCADE)
+
+
+class ChildProxy(Child):
+    class Meta:
+        proxy = True
+
+    def dummy(self):
+        """function available only on ChildProxy objects"""
