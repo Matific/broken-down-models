@@ -25,6 +25,10 @@ class BrokenDownQuerySet(models.QuerySet):
         c._with_parents = self._with_parents
         return c
 
+    @property
+    def _concrete_model(self):
+        return self.model._meta.concrete_model
+
     def select_related(self, *fields):
         """
         Handle the parent deferrals for select_related
@@ -35,9 +39,10 @@ class BrokenDownQuerySet(models.QuerySet):
         if fields:
             with_parents = set(self._with_parents)
             field_heads = set(field.split('__', 1)[0] for field in fields)
-            for parent, link in self.model._meta.parents.items():
+            for parent, link in self._concrete_model._meta.parents.items():
                 if parent in with_parents:
                     continue
+
                 ptr_name = link.name
                 for field in field_heads:
                     if field == ptr_name:
@@ -66,7 +71,7 @@ class BrokenDownQuerySet(models.QuerySet):
     update_fetched_parents.queryset_only = True
 
     def _get_field_names_to_fetch(self, parent_set):
-        return get_field_names_to_fetch([self.model, *parent_set])
+        return get_field_names_to_fetch([self._concrete_model, *parent_set])
 
     def select_related_with_all_parents(self):
         updated = self.defer(None)
@@ -137,10 +142,13 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         used_fields = {}  # name or attname -> field
 
         # Check that multi-inheritance doesn't cause field name shadowing.
-        # This is copied verbatim from standard Model.
         for parent in cls._meta.get_parent_list():
             for f in parent._meta.local_fields:
-                clash = used_fields.get(f.name) or used_fields.get(f.attname) or None
+                # This is the change from standard Model.
+                # Original says: clash = used_fields.get(f.name) or used_fields.get(f.attname) or None
+                clash = used_fields.get(f.name) or None
+                if (not clash) and not getattr(f, 'can_share_attribute', False):
+                    clash = used_fields.get(f.attname) or None
                 if clash:
                     errors.append(
                         checks.Error(

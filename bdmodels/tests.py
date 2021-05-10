@@ -9,10 +9,12 @@ from .fields import VirtualOneToOneField
 
 
 class InvalidFieldTestCase(TestCase):
-    def setUp(self):
+
+    @classmethod
+    def setUpTestData(cls):
         class Target(models.Model):
             pass
-        self.Target = Target
+        cls.Target = Target
 
     def test_editable_arg(self):
         with self.assertRaisesMessage(ValueError, "Virtual field cannot be editable"):

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .models import Child, UserChild, Nephew, TimeStampedChild
+from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy
 
 
 class SelectRelatedTestCase(TestCase):
@@ -81,6 +81,11 @@ class AbstractBaseClassTestCase(SelectRelatedTestCase):
         c.child_name = 'Cyrus'
         c.save()
         self.assertNotEqual(orig_last_modified, c.last_modified)
+
+
+class ProxyChildClassTestCase(SelectRelatedTestCase):
+
+    ChildClass = ChildProxy
 
 
 class UserChildTestCase(TestCase):
