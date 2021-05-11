@@ -107,10 +107,16 @@ class BrokenDownOptions(Options):
 
 
 class BrokenDownModelBase(models.base.ModelBase):
-    def __new__(cls, *args, **kwargs):
-        new_model = super().__new__(cls, *args, **kwargs)
-        new_model._meta.__class__ = BrokenDownOptions
-        return new_model
+    """A hack for using our own options class"""
+    def add_to_class(cls, name, value):
+        if name == '_meta':
+            # We only mess with 'vanilla' Options
+            if type(value) == Options:
+                value.__class__ = BrokenDownOptions
+            else:
+                # If anybody else already messed with it, we bail out
+                raise TypeError(f"BrokenDownModel needs to mess with the Options, but we got {type(value)}")
+        super().add_to_class(name, value)
 
 
 class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
