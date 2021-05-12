@@ -106,6 +106,14 @@ class UserChildTestCase(TestCase):
             self.assertEqual(uc.user.username, 'artaxerxes')
 
 
+class ObjectCreationTestCase(TestCase):
+
+    def test_create_child_with_id(self):
+        """Verify the pk is not overwritten with None or anything else during object creation"""
+        u = Child(id=12, para_name='A', parb_name='B', parc_name='C', child_name='Xerxes')
+        self.assertEqual(u.id, 12)
+
+
 class UncleTestCase(TestCase):
     def test_select_related_through_parent(self):
         user = get_user_model().objects.create(username='artaxerxes')

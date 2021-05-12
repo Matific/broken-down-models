@@ -4,7 +4,7 @@ from django.core import checks, exceptions
 from django.db.models import (
     ForeignKey, OneToOneField,
     SET_NULL, SET_DEFAULT,
-    NOT_PROVIDED,
+    NOT_PROVIDED, DEFERRED,
 )
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
 from django.db.models.fields.related_descriptors import ForwardOneToOneDescriptor, ForwardManyToOneDescriptor
@@ -166,8 +166,8 @@ class VirtualForeignKey(ForeignKey):
         return self.from_field
 
     def get_default(self):
-        """Virtual fields do not have defaults, and must rely on the from_field"""
-        return self.model._meta.get_field(self.from_field).get_default()
+        """Virtual fields do not have defaults. They must stay deferred."""
+        return DEFERRED
 
     def formfield(self, *, using=None, **kwargs):
         return super().formfield(using=using, disabled=True, **kwargs)
