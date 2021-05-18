@@ -1,9 +1,9 @@
 import itertools
 
 from django.core import checks
-from django.db import models
+from django.db import models, connections, transaction
 from django.db.models.options import Options
-from django.utils.functional import cached_property
+from django.utils.functional import cached_property, partition
 
 
 def get_field_names_to_fetch(model_set):
@@ -78,6 +78,69 @@ class BrokenDownQuerySet(models.QuerySet):
         updated = super(BrokenDownQuerySet, updated).select_related()
         updated._with_parents = frozenset(self.model._meta.parents.keys())
         return updated
+
+    def bulk_create(self, objs, batch_size=None, ignore_conflicts=False):
+        """
+        Insert each of the instances into the database. Do *not* call
+        save() on each of the instances, do not send any pre/post_save
+        signals.
+        Setting the primary key attribute, if it is not set, is required
+        for broken-down models; so if the PK is an autoincrement field,
+        features.can_return_ids_from_bulk_insert is required.
+        """
+        # Of importance: Broken-down models do the funny reverse thing where
+        # the parents inherit their PK value from the child. So we only need
+        # to do one id-returning insert, then fill in the PKs for the others
+        # ourselves.
+        if batch_size is not None and not batch_size > 0:
+            raise ValueError("bulk_create batch size, if provided, must be positive")
+        if not objs:
+            return objs
+        objs = list(objs)
+        self._populate_pk_values(objs)
+        # Drop proxies, use the concrete model
+        model = self.model._meta.concrete_model
+        meta = model._meta
+        self._for_write = True
+        connection = connections[self.db]
+        objs_with_pk, objs_without_pk = partition(lambda o: o.pk is None, objs)
+        if objs_without_pk and not connection.features.can_return_ids_from_bulk_insert:
+            raise ValueError(f"On {connection.vendor} bulk_create for broken-down models requires that PKs be set")
+        with transaction.atomic(using=self.db, savepoint=False):
+            # Start with the BDModel child
+            fields = meta.local_concrete_fields
+            if objs_with_pk:
+                self._batched_insert(objs_with_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
+            if objs_without_pk:
+                fields = [f for f in fields if not isinstance(f, models.AutoField)]
+                ids = self._batched_insert(objs_without_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
+                if connection.features.can_return_ids_from_bulk_insert and not ignore_conflicts:
+                    assert len(ids) == len(objs_without_pk)
+                for obj_without_pk, pk in zip(objs_without_pk, ids):
+                    obj_without_pk.pk = pk
+            # Now everyone has PKs, we can proceed with objs
+            for parent, field in meta.parents.items():
+                # Make sure the link fields are synced with parent.
+                if field:
+                    self._sync_parent_pks_to_pk(objs, parent)
+                    parent._base_manager.get_queryset()._batched_insert(
+                        objs, parent._meta.local_concrete_fields, batch_size, ignore_conflicts=ignore_conflicts
+                    )
+
+            for obj in objs:
+                obj._state.adding = False
+                obj._state.db = self.db
+        return objs
+
+    @staticmethod
+    def _sync_parent_pks_to_pk(objs, parent):
+        parent_pk_attname = parent._meta.pk.attname
+        for obj in objs:
+            parent_pk = getattr(obj, parent_pk_attname)
+            if parent_pk is None:
+                setattr(obj, parent_pk_attname, obj.pk)
+            elif parent_pk != obj.pk:
+                raise ValueError(f"Broken-Down object {obj} has part {parent} with inconsistent id {parent_pk}")
 
 
 class BrokenDownManager(models.Manager.from_queryset(BrokenDownQuerySet)):
