@@ -3,7 +3,7 @@ import warnings
 from django.core import checks, exceptions
 from django.db.models import (
     ForeignKey, OneToOneField,
-    SET_NULL, SET_DEFAULT,
+    CASCADE, SET_NULL, SET_DEFAULT,
     NOT_PROVIDED, DEFERRED,
 )
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
@@ -181,3 +181,17 @@ class VirtualOneToOneField(OneToOneField, VirtualForeignKey):
     def __init__(self, to, from_field, on_delete, to_field=None, **kwargs):
         kwargs['unique'] = True
         super(OneToOneField, self).__init__(to, from_field, on_delete, to_field=to_field, **kwargs)
+
+
+class VirtualParentLink(VirtualOneToOneField):
+    description = _("A VirtualOneToOneField based on a PK that is also a parent link -- a common case")
+
+    def __init__(self, to, from_field='id', on_delete=CASCADE, to_field=None, **kwargs):
+        kwargs['parent_link'] = True
+        super().__init__(to, from_field, on_delete, to_field=to_field, **kwargs)
+
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        if "parent_link" in kwargs:
+            del kwargs['parent_link']
+        return name, path, args, kwargs
