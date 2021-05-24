@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from bdmodels.models import BrokenDownModel
-from bdmodels.fields import VirtualOneToOneField
+from bdmodels.fields import VirtualOneToOneField, VirtualParentLink
 
 
 class ParentA(models.Model):
@@ -85,3 +85,10 @@ class ChildProxy(Child):
 
     def dummy(self):
         """function available only on ChildProxy objects"""
+
+
+class ChildWithVirtualNonParent(BrokenDownModel, ParentA):
+    id = models.AutoField(primary_key=True)
+    parenta_ptr = VirtualParentLink(ParentA, on_delete=models.DO_NOTHING)
+    b = VirtualOneToOneField(ParentB, 'id', on_delete=models.DO_NOTHING)
+    child_name = models.CharField(max_length=10)

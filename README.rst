@@ -38,7 +38,6 @@ Project TODO
    find and document the exact problems and preferably solve them.
 #. Activate the tests copied from Django
 #. Consider more tests to take from Django, related to FKs and 1to1s.
-#. Add tests for VirtualParentLink
 #. Add tests for bulk-create:
     #. Correctness if the DB backend ``can_return_ids_from_bulk_insert``
     #. Proper failure otherwise

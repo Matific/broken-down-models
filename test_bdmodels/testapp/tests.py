@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy
+from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB
 
 
 class SelectRelatedTestCase(TestCase):
@@ -137,3 +137,46 @@ class UncleTestCase(TestCase):
         with self.assertNumQueries(1):
             c = Nephew.objects.select_related('parfk_user').get(pk=child.pk)
             self.assertEqual(c.parfk_user_id, c.parfk_user.id)
+
+
+class VirtualNonParentTestCase(TestCase):
+
+    ChildClass = ChildWithVirtualNonParent
+
+    def setUp(self):
+        super().setUp()
+        self.child = self.ChildClass.objects.create(para_name='A', child_name='Xerxes')
+        b = ParentB.objects.create(bid=self.child.id, parb_name="Ferb")
+
+    def test_parents_not_joined_by_default(self):
+        """
+        By default, fetching a broken-down model selects only the child fields.
+        Accessing parent fields requires further database queries.
+        """
+        with self.assertNumQueries(1):
+            c = self.ChildClass.objects.get(child_name='Xerxes')
+        with self.assertNumQueries(2):
+            parents = [c.para_name, c.b.parb_name]
+        self.assertEqual("".join(parents), "AFerb")
+
+    def test_select_related_parent(self):
+        """select_related() with a single, immediate parent link, joins the parent to the selection"""
+        with self.assertNumQueries(1):
+            c = self.ChildClass.objects.select_related('parenta_ptr').get(child_name='Xerxes')
+            self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
+        with self.assertNumQueries(1):
+            self.assertIs(c.b.parb_zit, True)
+
+    def test_select_related_non_parent(self):
+        with self.assertNumQueries(1):
+            c = self.ChildClass.objects.select_related('b').get(child_name='Xerxes')
+            self.assertIs(c.b.parb_zit, True)
+        with self.assertNumQueries(1):
+            self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
+
+    def test_select_related_all(self):
+        """select_related() with no arguments joins all the parents to the selection"""
+        with self.assertNumQueries(1):
+            c = self.ChildClass.objects.select_related().get(child_name='Xerxes')
+            self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
+            self.assertIs(c.b.parb_zit, True)
