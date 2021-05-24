@@ -22,13 +22,30 @@ Maybe, if we look the other way, it won't bother us too much...
 help you refactor your large model into a set of smaller ones, each with
 its own database table, while most of your project code remains unchanged.
 
-General Idea
+Installation
 ------------
+::
 
-Django already includes a mechanism where fields for one model are stored in
-more than one table -- Multi Table Inheritance. That's what happens when we
-do "normal" inheritance of models, without specifying anything special in
-the Meta of either of the models.
+    pip install broken-down-models
+
+Usage
+-----
+Assume we have a large, central model::
+
+    class Central(models.Model):
+        a = models.IntegerField()
+        b = models.CharField(max_length=100)
+        c = models.DateTimeField()
+        # ...
+        z = models.IPV4AddressField()
+
+We would like to break it down into groups of fields.
+
+.. note:: TODO: complete this with VirtualParentLink
+
+.. note:: TODO: explain migrations and migration_ops
+
+.. note:: TODO: Explain VirtualOneToOneField and VirtualForeignKey
 
 Project TODO
 ------------
@@ -39,10 +56,12 @@ Project TODO
 #. Activate the tests copied from Django
 #. Consider more tests to take from Django, related to FKs and 1to1s.
 #. Add tests for bulk-create:
-    #. Correctness if the DB backend ``can_return_ids_from_bulk_insert``
-    #. Proper failure otherwise
+
+   #. Correctness if the DB backend ``can_return_ids_from_bulk_insert``
+   #. Proper failure otherwise
 
 Open-Source Release TODO
 ----
 
-#. Add proper documentation (even just a README) instead of this file
+#. Complete documentation
+#. Set License
