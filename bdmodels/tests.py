@@ -39,15 +39,13 @@ class InvalidFieldTestCase(TestCase):
 @isolate_apps('bdmodels')
 class InvalidModelsTestCase(TestCase):
 
-    @classmethod
-    def setUpParent(cls):
+    def setUp(self):
         """This doesn't work as `setUpTestData()`. apparently the isolate_apps() decorator is applied per-method"""
         class Parent(models.Model):
             parent_id = models.BigAutoField(primary_key=True)
-        cls.Parent = Parent
+        self.Parent = Parent
 
     def test_on_delete_set_null(self):
-        self.setUpParent()
 
         class ChangeOnDeleteChild(BrokenDownModel, self.Parent):
             id = models.AutoField(primary_key=True)
@@ -65,7 +63,6 @@ class InvalidModelsTestCase(TestCase):
         self.assertEqual(error.obj.name, 'parent_ptr')
 
     def test_on_delete_set_default(self):
-        self.setUpParent()
 
         class ChangeOnDeleteChild(BrokenDownModel, self.Parent):
             id = models.AutoField(primary_key=True)
@@ -83,7 +80,6 @@ class InvalidModelsTestCase(TestCase):
         self.assertEqual(error.obj.name, 'parent_ptr')
 
     def test_on_delete_do_nothing(self):
-        self.setUpParent()
 
         class ValidOnDeleteChild(BrokenDownModel, self.Parent):
             id = models.AutoField(primary_key=True)
@@ -93,7 +89,6 @@ class InvalidModelsTestCase(TestCase):
         self.assertEqual(len(errors), 0)
 
     def test_on_delete_protect(self):
-        self.setUpParent()
 
         class ValidOnDelete(BrokenDownModel, self.Parent):
             id = models.AutoField(primary_key=True)
@@ -104,7 +99,6 @@ class InvalidModelsTestCase(TestCase):
 
     @skipUnless(hasattr(models, 'RESTRICT'), "RESTRICT does not exist in this version of Django")
     def test_on_delete_restrict(self):
-        self.setUpParent()
 
         class ValidOnDeleteChild(BrokenDownModel, self.Parent):
             id = models.AutoField(primary_key=True)
@@ -114,7 +108,6 @@ class InvalidModelsTestCase(TestCase):
         self.assertEqual(len(errors), 0)
 
     def test_nonvirtual_parent(self):
-        self.setUpParent()
 
         class NonVirtualChild(BrokenDownModel, self.Parent):
             id = models.AutoField(primary_key=True)

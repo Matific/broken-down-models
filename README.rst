@@ -47,4 +47,3 @@ Open-Source Release TODO
 ----
 
 #. Add proper documentation (even just a README) instead of this file
-#. Add ``tox`` testing for a range of Python and Django versions
