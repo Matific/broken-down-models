@@ -194,7 +194,10 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         if fields:
             opts = self._meta
             parents = set(opts.get_field(name).model for name in fields)
-            fields = get_field_names_to_fetch(parents)
+            all_fields = get_field_names_to_fetch(parents)
+            # Take special care *not* to override fields which have been set on the object,
+            # unless they were specifically requested for refresh
+            fields = list(set(all_fields) - set(self.__dict__.keys()) | set(fields))
         super().refresh_from_db(using, fields)
 
     @classmethod

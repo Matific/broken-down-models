@@ -180,3 +180,29 @@ class VirtualNonParentTestCase(TestCase):
             c = self.ChildClass.objects.select_related().get(child_name='Xerxes')
             self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
             self.assertIs(c.b.parb_zit, True)
+
+
+class ObjectUpdateTestCase(TestCase):
+
+    def setUp(self) -> None:
+        self.child = Child.objects.create(id=12, para_name='A', parb_name='B', parc_name='C', parc_zit=True, child_name='Xerxes')
+
+    def test_update_parent_field(self):
+        c = Child.objects.get(id=12)
+        c.child_name = "Cyrus"
+        c.parc_zit = False
+        c.save()
+        # Get a fresh copy
+        c = Child.objects.get(id=12)
+        self.assertFalse(c.parc_zit)
+
+    def test_update_parent_field_with_other_parent_field_access(self):
+        c = Child.objects.get(id=12)
+        c.parc_zit = False
+        self.assertFalse(c.parc_zit)
+        self.assertEqual(c.parc_name, 'C')  # Reading parc_name may reset parc_zit
+        self.assertFalse(c.parc_zit)
+        c.save()
+        # Get a fresh copy
+        c = Child.objects.get(id=12)
+        self.assertFalse(c.parc_zit)
