@@ -1,3 +1,10 @@
+
+.. _details:
+
+What is really going on here
+++++++++++++++++++++++++++++
+
+
 General Idea
 ------------
 
@@ -82,7 +89,7 @@ Broken ``select_related()``
 The solution to implicit joins works well. Actually, a little too well -- in some cases,
 we'd want to have some part of the original model select_related()-ed, but naively using
 ``only()`` in the manager blocks it: Calling ``select_related()`` when all the relevant
-fields are deferred (by the only() call) achieves nothing. That is, as described so far,
+fields are deferred (by the ``only()`` call) achieves nothing. That is, as described so far,
 ::
     Child.objects.select_related('locale')
 
@@ -103,7 +110,7 @@ value. We'd prefer that, if a query is already made, we'll get all the fields fr
 relevant parent.
 
 The way this query for the deferred field is done (internally in Django) is by calling
-the model method refresh_from_db(); that method can take an argument that tells it
+the model method ``refresh_from_db()``; that method can take an argument that tells it
 exactly which fields to fetch. Usually, when getting the value of a deferred field,
 the function is called with the name of that field only. We override it and make sure
 that whenever it is given names, we complement the list of names to include all the
