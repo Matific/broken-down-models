@@ -67,13 +67,105 @@ Assume we have a large, central model::
         # ...
         z = models.IPV4AddressField()
 
-We would like to break it down into groups of fields.
+We would like to break it down into groups of fields. Let's say that the first
+four fields are really core, useful almost whenever the model is used, but
+we want to separate out the others in groups of 5-6. This involves two parts;
+the first is
 
-.. note:: TODO: complete this with VirtualParentLink
+Models
+======
+
+As mentioned above, the separate groups are going to be parent classes for the
+new ``Central``, so we'll have to define them first. These will be completely
+regular models, with one exception: We need to explicitly define their primary
+key, and give each of these primary keys a unique name. We can base this name
+on the model name; so we'll have something like::
+
+    class Group1(models.Model):
+        group1_id = models.IntegerField(primary_key=True)  # New field
+        e = models.BooleanField()  # This field is taken from Central
+        f = models.TextField()     # This too
+        # ...
+        j = models.UUIDField(null=True)
+
+Note that we're using an ``IntegerField``, and not an ``AutoField``, for
+the primary key; this is because we still assume that objects of this part
+of the ``Central`` model will not be created in isolation, but only as part
+of a complete ``Central`` object. In such creation, the primary key value
+will come from the complete object, and there is no need to generate it for
+each of the parts. In fact, an ``AutoField`` should work just as well -- one
+is still allowed to set the value of an ``AutoField`` explicitly, and that
+is what a ``BrokenDownModel`` will do for its parents behind the scenes.
+
+We'll define similarly the next groups::
+
+    class Group2(models.Model):
+        group2_id = models.IntegerField(primary_key=True)
+        k = models.BooleanField()
+        # ...
+        o = models.ForeignKey(SomeOtherModel, null=True, on_delete=models.CASCADE)
+
+    # and Group3, and...
+
+    class Group4(models.Model):
+        group4_id = models.IntegerField(primary_key=True)
+        # ...
+        z = models.IPV4AddressField()
+
+Now we can finally re-define the original model. We'll need to import some
+names from the library::
+
+    from bdmodels.fields import VirtualParentLink
+    from bdmodels.models import BrokenDownModel
+
+and then::
+
+    class Central(BrokenDownModel, Group1, Group2, Group3, Group4):
+        # Add an explicit PK here too
+        id = models.AutoField(primary_key=True)
+
+        # Add links to the parents
+        group1_ptr = VirtualParentLink(Group1)
+        group2_ptr = VirtualParentLink(Group2)
+        group3_ptr = VirtualParentLink(Group3)
+        group4_ptr = VirtualParentLink(Group4)
+
+        # The original core fields we decided to leave in the model
+        a = models.IntegerField()
+        b = models.CharField(max_length=100)
+        c = models.DateTimeField()
+        d = models.DateField()
+
+Note that we had to define the primary key explicitly here as well. This is because
+Django's default behavior for MTI is to use the parent-link to the first parent as
+the PK of the child. We do not want this.
+
+The ``VirtualPrentLink`` fields defined explicitly replace similarly-named
+``OneToOneField`` which Django would generate, by default, to connect a child
+model with its MTI parents. They differ from such fields by all using the ``id``
+column in the database -- regular parent-link ``OneToOneField`` fields would each define
+their own column, although for our use case these columns would all be holding
+the same value (same as ``id``).
+
+With these definitions, our app is essentially ready to work against a database where
+the ``Central`` model has been broken down (up to some limitations, see below). But we
+still have to bring our database to this state. It is now time to talk about...
+
+Migrations
+==========
 
 .. note:: TODO: explain migrations and migration_ops
 
 .. note:: TODO: Explain VirtualOneToOneField and VirtualForeignKey
+
+.. note:: TODO: Limitations
+
+  The first and obvious limitation is that we only handle objects accessed
+  through the ORM, of course; raw SQL queries will not be magically adapted.
+
+  Another is that if you have custom managers (as is likely on a central model),
+  you now have to make them subclass ``bdmodels.models.BrokenDownManager`` instead
+  of ``django.db.models.Manager``.
 
 Project TODO
 ------------
