@@ -58,6 +58,14 @@ class SelectRelatedTestCase(TestCase):
             self.assertIs(c.parb_zit, True)
             self.assertEqual(c.parc_name, 'C')
 
+    def test_fetch_all_parents(self):
+        """fetch_all_parents() joins all the parents to the selection"""
+        with self.assertNumQueries(1):
+            c = self.ChildClass.objects.fetch_all_parents().get(child_name='Xerxes')
+            self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
+            self.assertIs(c.parb_zit, True)
+            self.assertEqual(c.parc_name, 'C')
+
     def test_select_related_non_parent(self):
         user = get_user_model().objects.create(username='artaxerxes')
         c = self.ChildClass.objects.get(child_name='Xerxes')
@@ -103,6 +111,14 @@ class UserChildTestCase(TestCase):
             # Note: We can do this with UserChild, it doesn't work with Child because its
             # FK to User is nullable and the empty select_related() doesn't collect nullable FKs.
             uc = UserChild.objects.select_related().get(child_name='Xerxes')
+            self.assertEqual(uc.user.username, 'artaxerxes')
+
+    def test_fetch_parents_doesnt_join_non_parent(self):
+        """fetch_all_parents() joins parents to the selection, check that it doesn't join others"""
+        with self.assertNumQueries(2):
+            # Note: We can do this with UserChild, it doesn't work with Child because its
+            # FK to User is nullable and the empty select_related() doesn't collect nullable FKs.
+            uc = UserChild.objects.fetch_all_parents().get(child_name='Xerxes')
             self.assertEqual(uc.user.username, 'artaxerxes')
 
 

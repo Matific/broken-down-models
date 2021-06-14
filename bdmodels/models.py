@@ -74,8 +74,18 @@ class BrokenDownQuerySet(models.QuerySet):
         return get_field_names_to_fetch([self._concrete_model, *parent_set])
 
     def select_related_with_all_parents(self):
-        updated = self.defer(None)
+        updated = self.fetch_all_parents()
         updated = super(BrokenDownQuerySet, updated).select_related()
+        return updated
+
+    def fetch_all_parents(self):
+        """
+        Select all fields in the model for immediate fetching, as if this was not
+        a broken-down model.
+
+        This will make the query join all the parent tables.
+        """
+        updated = self.defer(None)
         updated._with_parents = frozenset(self.model._meta.parents.keys())
         return updated
 
