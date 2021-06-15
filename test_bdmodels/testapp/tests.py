@@ -75,6 +75,24 @@ class SelectRelatedTestCase(TestCase):
             cc = self.ChildClass.objects.select_related('user').get(child_name='Xerxes')
             self.assertEqual(cc.user.username, 'artaxerxes')
 
+    def test_delete_qset(self):
+        # 5 queries -- one to get the objects, and one to delete each part
+        with self.assertNumQueries(5):
+            self.ChildClass.objects.filter(child_name='Xerxes').delete()
+
+    def test_delete_many(self):
+        self.ChildClass.objects.create(para_name='A', parb_name='B', parc_name='C', child_name='Yeryes')
+        self.ChildClass.objects.create(para_name='A', parb_name='B', parc_name='C', child_name='Zerzes')
+        # 5 queries -- one to get the objects, and one to delete each part
+        with self.assertNumQueries(5):
+            self.ChildClass.objects.filter(child_name='Xerxes').delete()
+
+    def test_delete_object(self):
+        obj = self.ChildClass.objects.get(child_name='Xerxes')
+        # 5 queries -- one to fill out the object, and one to delete each part
+        with self.assertNumQueries(5):
+            obj.delete()
+
 
 class AbstractBaseClassTestCase(SelectRelatedTestCase):
 

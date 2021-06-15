@@ -142,6 +142,11 @@ class BrokenDownQuerySet(models.QuerySet):
                 obj._state.db = self.db
         return objs
 
+    def delete(self):
+        # Prevent extra queries when looking up parents for deletion
+        this = self.fetch_all_parents()
+        return super(BrokenDownQuerySet, this).delete()
+
     @staticmethod
     def _sync_parent_pks_to_pk(objs, parent):
         parent_pk_attname = parent._meta.pk.attname
@@ -199,16 +204,27 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
 
     objects = BrokenDownManager()
 
+    def delete(self, using=None, keep_parents=False):
+        opts = self._concrete_meta
+        parents = opts.parents.keys()
+        all_fields = get_field_names_to_fetch(parents)
+        self.refresh_from_db(using=using, fields=all_fields)
+        return super().delete(using=using, keep_parents=keep_parents)
+
     def refresh_from_db(self, using=None, fields=None):
         """We're overriding this to make sure fetching any parent attribute fetches the whole parent"""
         if fields:
-            opts = self._meta
+            opts = self._concrete_meta
             parents = set(opts.get_field(name).model for name in fields)
             all_fields = get_field_names_to_fetch(parents)
             # Take special care *not* to override fields which have been set on the object,
             # unless they were specifically requested for refresh
             fields = list(set(all_fields) - set(self.__dict__.keys()) | set(fields))
         super().refresh_from_db(using, fields)
+
+    @property
+    def _concrete_meta(self):
+        return self._meta.concrete_model._meta
 
     @classmethod
     def check(cls, **kwargs):
