@@ -93,6 +93,28 @@ class SelectRelatedTestCase(TestCase):
         with self.assertNumQueries(5):
             obj.delete()
 
+    def test_getattr_if_loaded_gets_loaded(self):
+        obj = self.ChildClass.objects.get(child_name='Xerxes')
+        with self.assertNumQueries(0):
+            child_name = obj.getattr_if_loaded('child_name', 'Pericles')
+            self.assertEqual(child_name, 'Xerxes')
+
+    def test_getattr_if_loaded_no_query(self):
+        obj = self.ChildClass.objects.get(child_name='Xerxes')
+        with self.assertNumQueries(0):
+            para_name = obj.getattr_if_loaded('para_name')
+            self.assertIsNone(para_name)
+            parb_name = obj.getattr_if_loaded('parb_name', 'Yudokolis')
+            self.assertEqual(parb_name, 'Yudokolis')
+
+    def test_getattr_if_loaded_warns_on_error(self):
+        obj = self.ChildClass.objects.get(child_name='Xerxes')
+        model_name = self.ChildClass._meta.label
+        with self.assertNumQueries(0):
+            with self.assertWarnsMessage(UserWarning, f"{model_name} instance has no attribute 'pneumonia'"):
+                pneumonia = obj.getattr_if_loaded('pneumonia', ...)
+                self.assertEqual(pneumonia, ...)
+
 
 class AbstractBaseClassTestCase(SelectRelatedTestCase):
 

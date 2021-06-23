@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 from django.core import checks
 from django.db import models, connections, transaction
@@ -203,6 +204,15 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         abstract = True
 
     objects = BrokenDownManager()
+
+    def getattr_if_loaded(self, attr: str, default=None):
+        """
+        Access an attribute (field), only if set specifically for the instance.
+        This allows querying fields without causing unnecessary db roundtrips.
+        """
+        if attr not in self.__dict__ and not hasattr(type(self), attr):
+            warnings.warn(f"{self._meta.label} instance has no attribute '{attr}'")
+        return self.__dict__.get(attr, default)
 
     def delete(self, using=None, keep_parents=False):
         opts = self._concrete_meta
