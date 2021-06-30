@@ -221,15 +221,19 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         self.refresh_from_db(using=using, fields=all_fields)
         return super().delete(using=using, keep_parents=keep_parents)
 
-    def refresh_from_db(self, using=None, fields=None):
+    def refresh_from_db(self, using=None, fields=None, *, all_parents=False):
         """We're overriding this to make sure fetching any parent attribute fetches the whole parent"""
+        opts = self._concrete_meta
         if fields:
-            opts = self._concrete_meta
+            if all_parents:
+                raise ValueError("refresh_from_db() with all_parents=True and specific fields makes no sense")
             parents = set(opts.get_field(name).model for name in fields)
             all_fields = get_field_names_to_fetch(parents)
             # Take special care *not* to override fields which have been set on the object,
             # unless they were specifically requested for refresh
             fields = list(set(all_fields) - set(self.__dict__.keys()) | set(fields))
+        elif all_parents:
+            fields = [field.name for field in opts.concrete_fields]
         super().refresh_from_db(using, fields)
 
     @property

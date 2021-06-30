@@ -4,6 +4,7 @@ from django.test import TestCase
 from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB
 
 
+# TODO: Rename test classes
 class SelectRelatedTestCase(TestCase):
 
     ChildClass = Child
@@ -115,6 +116,14 @@ class SelectRelatedTestCase(TestCase):
                 pneumonia = obj.getattr_if_loaded('pneumonia', ...)
                 self.assertEqual(pneumonia, ...)
 
+    def test_refresh_from_db_all_parents(self):
+        c = self.ChildClass.objects.get(child_name='Xerxes')
+        with self.assertNumQueries(1):
+            c.refresh_from_db(all_parents=True)
+            self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
+            self.assertIs(c.parb_zit, True)
+            self.assertEqual(c.parc_name, 'C')
+
 
 class AbstractBaseClassTestCase(SelectRelatedTestCase):
 
@@ -159,6 +168,12 @@ class UserChildTestCase(TestCase):
             # Note: We can do this with UserChild, it doesn't work with Child because its
             # FK to User is nullable and the empty select_related() doesn't collect nullable FKs.
             uc = UserChild.objects.fetch_all_parents().get(child_name='Xerxes')
+            self.assertEqual(uc.user.username, 'artaxerxes')
+
+    def test_refresh_from_db_all_parents_doesnt_join_non_parent(self):
+        uc = UserChild.objects.get(child_name='Xerxes')
+        with self.assertNumQueries(2):
+            uc.refresh_from_db(all_parents=True)
             self.assertEqual(uc.user.username, 'artaxerxes')
 
 
