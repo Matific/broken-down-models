@@ -17,6 +17,8 @@ django = ">= 2.2"
 ipython = "*"
 flake8 = "*"
 tox = "^3.23.1"
+Sphinx = "^4.0.2"
+sphinx-rtd-theme = "^0.5.2"
 
 
 [tool.tox]

@@ -25,6 +25,14 @@ def _can_return_rows_from_bulk_insert(connection):
 
 
 class BrokenDownQuerySet(models.QuerySet):
+    """
+    Special queryset for use with broken-down models.
+    """
+
+    # Note for contributors: The main point of this class is to keep track of which parents
+    # are set to be joined into the query and which aren't. We typically start with "none";
+    # the manager's get_queryset() sets things up so that the deferrals are in sync with that,
+    # and then we make sure they stay synced.
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -41,8 +49,11 @@ class BrokenDownQuerySet(models.QuerySet):
 
     def select_related(self, *fields):
         """
-        Handle the parent deferrals for select_related
-        Note: Of necessity, this means that if a parent is select_related, previous "only"
+        Fix :py:meth:`select_related() <django.db.models.query.QuerySet.select_related>` for correct
+        handling of parent deferrals.
+
+        .. note::
+              Of necessity, this means that if a parent is select_related, previous "only"
               is overridden and ignored. We make no effort to distinguish between deferrals
               created manually by the user, and those created automatically to defer parents.
         """
@@ -171,6 +182,11 @@ class BrokenDownQuerySet(models.QuerySet):
 
 
 class BrokenDownManager(models.Manager.from_queryset(BrokenDownQuerySet)):
+    """
+    Basic Manager for broken-down models.
+
+    Connects the model to a :py:class:`BrokenDownQuerySet` (and inherits its methods, as it is built from it).
+    """
     def get_queryset(self):
         return super().get_queryset().update_fetched_parents({}, force_update_deferrals=True)
 
@@ -210,7 +226,22 @@ class BrokenDownModelBase(models.base.ModelBase):
 
 
 class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
+    """
+    Base class to replace :py:class:`models.Model <django.db.models.Model>` for
+    broken-down models.
 
+    When using it, make sure to make it the first base-class of your model, so
+    that its modified metaclass replaces the regular Model metaclass.
+
+    It also specifies its own Manager, :py:class:`BrokenDownManager`; if you have
+    custom managers on your model, use that as your base manager.
+
+    Some :py:class:`Model <django.db.models.Model>` methods are overridden just
+    to change their implementation; notably, some checks are reimplemented and
+    some checks are added.
+
+    The methods documented here are those which add functionality.
+    """
     class Meta:
         abstract = True
 
@@ -219,7 +250,7 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
     def getattr_if_loaded(self, attr: str, default=None):
         """
         Access an attribute (field), only if set specifically for the instance.
-        This allows querying fields without causing unnecessary db roundtrips.
+        This allows querying fields without causing unnecessary database round-trips.
         """
         if attr not in self.__dict__ and not hasattr(type(self), attr):
             warnings.warn(f"{self._meta.label} instance has no attribute '{attr}'")
@@ -229,11 +260,20 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         opts = self._concrete_meta
         parents = opts.parents.keys()
         all_fields = get_field_names_to_fetch(parents)
-        self.refresh_from_db(using=using, fields=all_fields)
+        self.refresh_from_db(using=using, fields=all_fields)  # TODO: Use .refresh_from_db(all_parents=True)
         return super().delete(using=using, keep_parents=keep_parents)
 
-    def refresh_from_db(self, using=None, fields=None, *, all_parents=False):
-        """We're overriding this to make sure fetching any parent attribute fetches the whole parent"""
+    def refresh_from_db(self, using=None, fields=None, *, all_parents: bool = False):
+        """
+        This method is overridden for two purposes.
+
+        One is to make sure fetching any parent attribute fetches the whole parent.
+
+        The other is to add the ``all_parents`` argument, which can be used to reload
+        the object in full, canceling deferrals. Since ``all_parents`` makes the model
+        load all the fields, using it together with ``fields`` makes no sense and is
+        an error.
+        """
         opts = self._concrete_meta
         if fields:
             if all_parents:
@@ -361,7 +401,7 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
             checks.Error(
                 f"Field '{f.name}' is a link to a parent model (using MTI) but is not a virtual field. "
                 f"This is not supported in Broken-Down Models.",
-                hint="Define a VirtualOneToOneField for the parent link",
+                hint="Define a VirtualOneToOneField or VirtualParentLink for the parent link",
                 obj=cls,
                 id='bdmodels.E003'
             )

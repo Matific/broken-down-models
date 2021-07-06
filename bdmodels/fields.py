@@ -42,7 +42,27 @@ class VirtualForwardOneToOneDescriptor(ReadOnlyForwardRelationDescriptor, Forwar
 
 
 class VirtualForeignKey(ForeignKey):
+    """
+    A reference to a foreign object, based on an existing field
 
+    This is just like a :py:class:`ForeignKey <django.db.models.ForeignKey>`
+    with the exception that, rather than creating a related ``*_id`` field
+    to hold the id of the referenced object, it uses one of the existing
+    fields of the model.
+
+    The name of the field to be used is given as the required parameter ``from_field``.
+
+    Since the assumption is that the existing field serves other purposes
+    (either it is interesting in itself, or the id it holds references
+    more than one object), we limit changes through this field. Thus,
+    Attempts to change the field's value are blocked. Accordingly,
+    it must be non-editable, and its ``on_delete`` rule must not
+    change the field's value. Similarly, a default does not make sense.
+
+    Adding constraints would make sense -- but this is currently not supported.
+
+    If an index is needed, it should be defined on the concrete field.
+    """
     can_share_attribute = True
     forward_related_accessor_class = VirtualForwardManyToOneDescriptor
 
@@ -145,6 +165,13 @@ class VirtualForeignKey(ForeignKey):
             return []
 
     def deconstruct(self):
+        """
+        (This docstring had to be added to make Sphinx not include the parent's
+        docstring for it in the class documentation. Parent docstring applies,
+        as this changes implementation only)
+
+        :meta private:
+        """
         name, path, args, kwargs = super(ForeignKey, self).deconstruct()
         del kwargs['to_fields']
         del kwargs['from_fields']
@@ -166,7 +193,7 @@ class VirtualForeignKey(ForeignKey):
         return self.from_field
 
     def get_default(self):
-        """Virtual fields do not have defaults. They must stay deferred."""
+        # Virtual fields do not have defaults. They must stay deferred.
         return DEFERRED
 
     def formfield(self, *, using=None, **kwargs):
@@ -174,6 +201,15 @@ class VirtualForeignKey(ForeignKey):
 
 
 class VirtualOneToOneField(OneToOneField, VirtualForeignKey):
+    """
+    One-to-one relationship based on existing field
+
+    This field is to a :py:class:`OneToOneField <django.db.models.OneToOneField>` as a
+    :py:class:`VirtualForeignKey` is to a :py:class:`ForeignKey <django.db.models.ForeignKey>`,
+    and vice versa -- it is also to :py:class:`VirtualForeignKey` as a
+    :py:class:`OneToOneField <django.db.models.OneToOneField>` is to a
+    :py:class:`ForeignKey <django.db.models.ForeignKey>`.
+    """
     description = _("One-to-one relationship based on existing field")
 
     forward_related_accessor_class = VirtualForwardOneToOneDescriptor
@@ -184,7 +220,18 @@ class VirtualOneToOneField(OneToOneField, VirtualForeignKey):
 
 
 class VirtualParentLink(VirtualOneToOneField):
-    description = _("A VirtualOneToOneField based on a PK that is also a parent link -- a common case")
+    """
+    A :py:class:`VirtualOneToOneField` that is also a parent link
+
+    The most common use for :py:class:`VirtualOneToOneField` while breaking down
+    models is for a field that is also a link to a parent model, and whose base field
+    is the model's primary key.
+
+    This is mostly a shorthand for this use-case -- the ``parent_link`` attribute is
+    set to ``True``, and the ``from_field`` has a default of ``'id'`` (using the model's
+    actual PK is more involved, and is left for the future).
+    """
+    description = _("A VirtualOneToOneField that is also a parent link -- a common case")
 
     def __init__(self, to, from_field='id', on_delete=CASCADE, to_field=None, **kwargs):
         kwargs['parent_link'] = True

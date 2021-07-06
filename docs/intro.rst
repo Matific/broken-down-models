@@ -1,7 +1,8 @@
-Break a large model down, transparently
----------------------------------------
+=============
+What is this?
+=============
 
-In a project that goes on for several years, models tend to grow and
+In a Django project that goes on for several years, models tend to grow and
 accumulate fields. If you aren't very disciplined about this, you wake up
 one day, and find that one of your central tables, one with millions of
 rows, has 43 columns, including some TextFields. Most of them are not
@@ -18,12 +19,12 @@ break not just field access but also ORM queries... and this is a central
 model. The change imagined is open-heart surgery on a large project.
 Maybe, if we look the other way, it won't bother us too much...
 
-**broken-down-models** is here to help you. This is a library which can
+**Broken-Down-Models** is here to help you. This is a library which can
 help you refactor your large model into a set of smaller ones, each with
 its own database table, while most of your project code remains unchanged.
 
 How?
-----
+====
 
 Django already includes a mechanism where fields for one model are stored
 in more than one table: Multi Table Inheritance (also known as MTI).
@@ -39,28 +40,9 @@ model, and make the extensions subclass it. But in the situation where we
 try to break down an existing model, this would mean that code which currently
 uses the large model will have to change, to recognize the new parts.
 
-**broken-down-models** puts this idea on its head: The extensions become
+**Broken-Down-Models** puts this idea on its head: The extensions become
 parent models, and the core set is defined in a model which inherits them all.
 This way, all the fields are still fields of of the model we started with,
 for all purposes -- including not just attribute access, but also ORM queries.
 For this to really work well, though, some further modifications are required;
-this is why the library exists, and it is explained in its documentation.
-
-Project TODO
-------------
-
-#. Make sure ``VirtualForeignKey`` and ``VirtualOneToOneField`` can be used
-   when their ``from_field`` is not the primary key. Add tests to cover these cases.
-#. Consider more tests to take from Django, related to FKs and 1to1s.
-#. Consider Providing our own ``ModelBackend`` and/or a Mixin for ``ModelBackend``
-   to provide the override described under `Optimizing Queries` in the documentation.
-#. Activate the tests copied from Django
-#. Add tests for bulk-create:
-
-   #. Correctness if the DB backend ``can_return_ids_from_bulk_insert``
-   #. Proper failure otherwise
-
-Open-Source Release TODO
-----
-
-#. Contribution guide
+this is why this library exists.

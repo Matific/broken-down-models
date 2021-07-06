@@ -7,7 +7,14 @@ from django.db.migrations.operations.base import Operation
 
 # This function is named to look like other migration operations
 # noinspection PyPep8Naming
-def AddVirtualField(*, model_name, name, field):
+def AddVirtualField(*, model_name: str, name: str, field):
+    """
+    A thin wrapper -- limit :py:class:`AddField <django.db.migrations.operations.AddField>`
+    to act on the model and not on the database.
+    :param model_name: The model where the field is to be added
+    :param name: The name of the field to be added
+    :param field: The (virtual) field to be added
+    """
     state_operations = [migrations.AddField(model_name=model_name, name=name, field=field, preserve_default=False)]
     database_operations = []
     if field.db_constraint:
@@ -18,7 +25,21 @@ def AddVirtualField(*, model_name, name, field):
 
 
 class CopyDataToPartial(Operation):
-    # For simplicity, we assume both models are in the same app
+    """
+    A migration operation for moving data from a complete model, to a model which has
+    some of the complete model's fields, efficiently.
+
+    This is useful when breaking down a large model to parts.
+
+    This is a data operation -- it moves data, does not change schema; the kind
+    of operation typically written as a
+    :py:class:`RunPython <django.db.migrations.operations.RunPython>` operation.
+
+    **Details:** The forwards direction of the operation uses SQL ``INSERT-SELECT``
+    to create the rows in the table of the partial model. The backwards side uses ``UPDATE``
+    with a join to copy data from the partial model's table into (existing) rows of the
+    complete model's table.
+    """
 
     atomic = True
 
