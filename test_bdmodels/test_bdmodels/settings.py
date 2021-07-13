@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'bdmodels',
     'testapp',
+    'testmigs',
     #  'django_model_inheritance',  # Doesn't work yet -- see TODO: comment in its models.py
     #  'django_model_inheritance_regress',  # Would fail for the same reason, no attempt to adapt yet
 ]

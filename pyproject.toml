@@ -35,7 +35,7 @@ deps =
 changedir = test_bdmodels
 
 commands =
-    python manage.py test bdmodels testapp
+    python manage.py test bdmodels testapp testmigs
 """
 
 [build-system]
