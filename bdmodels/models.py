@@ -1,6 +1,7 @@
 import itertools
 import warnings
 
+import django
 from django.core import checks
 from django.db import models, connections, transaction
 from django.db.models.options import Options
@@ -13,6 +14,14 @@ def get_field_names_to_fetch(model_set):
     )
     fetched_field_names = [f.name for f in fetched_fields]
     return fetched_field_names
+
+
+def _can_return_rows_from_bulk_insert(connection):
+    return (
+        connection.features.can_return_rows_from_bulk_insert
+        if django.VERSION >= (3,) else
+        connection.features.can_return_ids_from_bulk_insert
+    )
 
 
 class BrokenDownQuerySet(models.QuerySet):
@@ -95,9 +104,11 @@ class BrokenDownQuerySet(models.QuerySet):
         Insert each of the instances into the database. Do *not* call
         save() on each of the instances, do not send any pre/post_save
         signals.
-        Setting the primary key attribute, if it is not set, is required
-        for broken-down models; so if the PK is an autoincrement field,
-        features.can_return_ids_from_bulk_insert is required.
+
+        Setting the primary key attribute, if it is not set, is required for broken-down
+        models; so if the PK is an autoincrement field, the database feature
+        ``can_return_rows_from_bulk_insert`` (``can_return_ids_from_bulk_insert`` on older
+        Django versions) is required.
         """
         # Of importance: Broken-down models do the funny reverse thing where
         # the parents inherit their PK value from the child. So we only need
@@ -115,7 +126,7 @@ class BrokenDownQuerySet(models.QuerySet):
         self._for_write = True
         connection = connections[self.db]
         objs_with_pk, objs_without_pk = partition(lambda o: o.pk is None, objs)
-        if objs_without_pk and not connection.features.can_return_ids_from_bulk_insert:
+        if objs_without_pk and not _can_return_rows_from_bulk_insert(connection):
             raise ValueError(f"On {connection.vendor} bulk_create for broken-down models requires that PKs be set")
         with transaction.atomic(using=self.db, savepoint=False):
             # Start with the BDModel child
