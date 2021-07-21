@@ -183,5 +183,4 @@ Project TODO
 Open-Source Release TODO
 ----
 
-#. Complete documentation
-#. Set License
+#. Contribution guide
