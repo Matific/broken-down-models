@@ -130,7 +130,7 @@ class BrokenDownQuerySet(models.QuerySet):
         if not objs:
             return objs
         objs = list(objs)
-        self._populate_pk_values(objs)
+        self._prepare_for_bulk_create(objs)
         # Drop proxies, use the concrete model
         model = self.model._meta.concrete_model
         meta = model._meta
@@ -143,14 +143,14 @@ class BrokenDownQuerySet(models.QuerySet):
             # Start with the BDModel child
             fields = meta.local_concrete_fields
             if objs_with_pk:
-                self._batched_insert(objs_with_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
+                returned_columns = self._batched_insert(objs_with_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
+                self._set_fields_from_returned_columns(objs_with_pk, returned_columns, meta, set_pk=False)
             if objs_without_pk:
                 fields = [f for f in fields if not isinstance(f, models.AutoField)]
-                ids = self._batched_insert(objs_without_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
-                if connection.features.can_return_ids_from_bulk_insert and not ignore_conflicts:
-                    assert len(ids) == len(objs_without_pk)
-                for obj_without_pk, pk in zip(objs_without_pk, ids):
-                    obj_without_pk.pk = pk
+                returned_columns = self._batched_insert(objs_without_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
+                if _can_return_rows_from_bulk_insert(connection) and not ignore_conflicts:
+                    assert len(returned_columns) == len(objs_without_pk)
+                self._set_fields_from_returned_columns(objs_without_pk, returned_columns, meta, set_pk=True)
             # Now everyone has PKs, we can proceed with objs
             for parent, field in meta.parents.items():
                 # Make sure the link fields are synced with parent.
@@ -159,7 +159,6 @@ class BrokenDownQuerySet(models.QuerySet):
                     parent._base_manager.get_queryset()._batched_insert(
                         objs, parent._meta.local_concrete_fields, batch_size, ignore_conflicts=ignore_conflicts
                     )
-
             for obj in objs:
                 obj._state.adding = False
                 obj._state.db = self.db
@@ -171,6 +170,14 @@ class BrokenDownQuerySet(models.QuerySet):
         return super(BrokenDownQuerySet, this).delete()
 
     @staticmethod
+    def _set_fields_from_returned_columns(objs, returned_columns, opts, *, set_pk):
+        """This implementation works with Django>=3.0"""
+        for obj, results in zip(objs, returned_columns):
+            for result, field in zip(results, opts.db_returning_fields):
+                if set_pk or field != opts.pk:
+                    setattr(obj, field.attname, result)
+
+    @staticmethod
     def _sync_parent_pks_to_pk(objs, parent):
         parent_pk_attname = parent._meta.pk.attname
         for obj in objs:
@@ -180,6 +187,18 @@ class BrokenDownQuerySet(models.QuerySet):
             elif parent_pk != obj.pk:
                 raise ValueError(f"Broken-Down object {obj} has part {parent} with inconsistent id {parent_pk}")
 
+    if django.VERSION < (3,):
+        @staticmethod
+        def _set_fields_from_returned_columns(objs, returned_columns, _, *, set_pk):
+            """This implementation works with Django<3.0"""
+            if not set_pk:
+                return
+            for obj, pk in zip(objs, returned_columns):
+                obj.pk = pk
+
+    if django.VERSION < (3, 2,):
+        def _prepare_for_bulk_create(self, objs):
+            return self._populate_pk_values(objs)
 
 class BrokenDownManager(models.Manager.from_queryset(BrokenDownQuerySet)):
     """

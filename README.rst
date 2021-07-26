@@ -55,10 +55,6 @@ Project TODO
 #. Consider Providing our own ``ModelBackend`` and/or a Mixin for ``ModelBackend``
    to provide the override described under `Optimizing Queries` in the documentation.
 #. Activate the tests copied from Django
-#. Add tests for bulk-create:
-
-   #. Correctness if the DB backend ``can_return_ids_from_bulk_insert``
-   #. Proper failure otherwise
 
 Open-Source Release TODO
 ----
