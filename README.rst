@@ -55,5 +55,7 @@ Project TODO
 #. Consider Providing our own ``ModelBackend`` and/or a Mixin for ``ModelBackend``
    to provide the override described under `Optimizing Queries` in the documentation.
 #. Activate the tests copied from Django
-
-
+#. Add MySql support, see
+   https://www.sqlite.org/lang_update.html#update_from_in_other_sql_database_engines
+#. Make github-action matrix prettier (db names as matrix values instead
+   of db-url values)
