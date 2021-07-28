@@ -188,8 +188,8 @@ class BrokenDownQuerySet(models.QuerySet):
                 raise ValueError(f"Broken-Down object {obj} has part {parent} with inconsistent id {parent_pk}")
 
     if django.VERSION < (3,):
-        @staticmethod
-        def _set_fields_from_returned_columns(objs, returned_columns, _, *, set_pk):
+        @staticmethod  # noqa: F811  # Python<3.9 says this is the line of the method def
+        def _set_fields_from_returned_columns(objs, returned_columns, _, *, set_pk):  # noqa: F811  # Redefined on purpose
             """This implementation works with Django<3.0"""
             if not set_pk:
                 return
@@ -199,6 +199,7 @@ class BrokenDownQuerySet(models.QuerySet):
     if django.VERSION < (3, 2,):
         def _prepare_for_bulk_create(self, objs):
             return self._populate_pk_values(objs)
+
 
 class BrokenDownManager(models.Manager.from_queryset(BrokenDownQuerySet)):
     """
@@ -491,4 +492,3 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
                 sender=origin, instance=self, created=(not updated),
                 update_fields=update_fields, raw=raw, using=using,
             )
-

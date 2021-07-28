@@ -31,6 +31,7 @@ skipsdist = True
 
 [testenv]
 deps =
+    flake8
     django22: Django>=2.2,<2.3
     django22: psycopg2<2.9
 
@@ -44,6 +45,7 @@ changedir = test_bdmodels
 passenv = BDMODELS_DB
 
 commands =
+    flake8 ..
     python manage.py test bdmodels testapp testmigs {posargs}
 """
 

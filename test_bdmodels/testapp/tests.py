@@ -224,7 +224,8 @@ class VirtualNonParentTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.child = self.ChildClass.objects.create(para_name='A', child_name='Xerxes')
-        b = ParentB.objects.create(bid=self.child.id, parb_name="Ferb")
+        # ParentB serves as the virtually-connected non-parent
+        ParentB.objects.create(bid=self.child.id, parb_name="Ferb")
 
     def test_parents_not_joined_by_default(self):
         """

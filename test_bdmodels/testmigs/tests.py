@@ -55,4 +55,3 @@ class BasicMigrationsTestCase(TransactionTestCase):
                 record[fld] == getattr(fetched, fld)
                 for fld in "id a b c d".split()
             ))
-
