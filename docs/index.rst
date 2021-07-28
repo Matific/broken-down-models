@@ -17,7 +17,7 @@ changes this forces upon other parts of your project code.
    optimizations.rst
    details.rst
    ref/bdmodels
-
+   contributing.rst
 
 Indices and tables
 ==================

@@ -56,7 +56,4 @@ Project TODO
    to provide the override described under `Optimizing Queries` in the documentation.
 #. Activate the tests copied from Django
 
-Open-Source Release TODO
-----
 
-#. Contribution guide
