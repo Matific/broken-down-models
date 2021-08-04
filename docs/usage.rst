@@ -11,6 +11,19 @@ No surprises here::
 You do not need to add anything to ``INSTALLED_APPS`` or any other Django
 setting.
 
+Requirements
+............
+
+Broken-Down-Models is tested against CPython 3.7, 3.8 and 3.9,
+Django 2.2, 3.1, and 3.2, PostgreSQL and SQLite.
+
+When using SQLite, Some migration operations require SQLite >= 3.3.0.  See
+:py:class:`CopyDataToPartial <bdmodels.migration_ops.CopyDataToPartial>` for
+details -- as far as we're aware, that is also the main hurdle to using
+the library with MySQL, Oracle, or any other DBMS (and like any good
+hurdle, hopping over it is not hard).
+
+
 Usage
 -----
 Assume we have a large, central model::
@@ -54,6 +67,9 @@ The library makes internal calls to :py:meth:`QuerySet.only()
 <django.db.models.query.QuerySet.only>`; user calls to ``only()`` or
 ``defer()`` on querysets of broken-down models may interact with these
 calls in surprising ways.
+
+The library does not handle the database constraints that should be imposed
+between a model and its broken-out components.
 
 The Refactoring Process
 .......................

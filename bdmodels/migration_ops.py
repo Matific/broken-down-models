@@ -11,6 +11,7 @@ def AddVirtualField(*, model_name: str, name: str, field):
     """
     A thin wrapper -- limit :py:class:`AddField <django.db.migrations.operations.AddField>`
     to act on the model and not on the database.
+
     :param model_name: The model where the field is to be added
     :param name: The name of the field to be added
     :param field: The (virtual) field to be added
@@ -35,15 +36,36 @@ class CopyDataToPartial(Operation):
     of operation typically written as a
     :py:class:`RunPython <django.db.migrations.operations.RunPython>` operation.
 
-    **Details:** The forwards direction of the operation uses SQL ``INSERT-SELECT``
-    to create the rows in the table of the partial model. The backwards side uses ``UPDATE``
-    with a join to copy data from the partial model's table into (existing) rows of the
-    complete model's table.
+    Implementation
+        The forwards direction of the operation uses SQL ``INSERT-SELECT``
+        to create the rows in the table of the partial model. The backwards side uses ``UPDATE``
+        with a join to copy data from the partial model's table into (existing) rows of the
+        complete model's table.
+
+    Compatibility
+        While ``INSERT-SELECT`` is standard SQL, ``UPDATE`` with a join
+        (A.K.A ``UPDATE-FROM``) is not. The library currently uses the PostgreSQL syntax,
+        which is also supported by SQLite >= 3.3.0; for this reason, the backwards side
+        of this migration operation only works with these database backends. Until this
+        is fixed, users who need this operation with other backends can write it as
+        a :py:class:`RunSQL <django.db.migrations.operations.RunSQL>` operation.
+
+        The SQLite documentation reviews `support of this feature in different systems`_, see
+        there for details.
+
+    .. _`support of this feature in different systems`:
+       https://www.sqlite.org/lang_update.html#update_from_in_other_sql_database_engines
     """
 
     atomic = True
 
     def __init__(self, full_model_name: str, part_model_name: str, elidable: bool = True):
+        """
+        :param full_model_name: The name of the full model (which at this point has all the fields)
+        :param part_model_name: The name of the partial model (whose fields are a PK and some fields
+                                copied from the full model)
+        :param elidable: Specifies if this operation can be elided when migrations are squashed
+        """
         self.full_model_name = full_model_name
         self.part_model_name = part_model_name
         self.elidable = elidable

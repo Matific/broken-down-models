@@ -45,3 +45,4 @@ bdmodels.migration\_ops
 .. autofunction:: AddVirtualField
 
 .. autoclass:: CopyDataToPartial
+   :special-members: __init__
