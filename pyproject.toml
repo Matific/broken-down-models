@@ -9,6 +9,17 @@ packages = [
 ]
 exclude = ["bdmodels/tests.py"]
 
+classifiers = [
+    # Classifiers for Python versions and license added automatically by Poetry
+    "Development Status :: 4 - Beta",
+    "Framework :: Django",
+    "Framework :: Django :: 2.2",
+    "Framework :: Django :: 3.1",
+    "Framework :: Django :: 3.2",
+    "Intended Audience :: Developers",
+    "Topic :: Database",
+]
+
 [tool.poetry.dependencies]
 python = "^3.7"
 django = ">= 2.2"
