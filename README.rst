@@ -1,3 +1,7 @@
+.. image:: https://github.com/matific/broken-down-models/actions/workflows/tests.yml/badge.svg
+   :alt: Test status
+
+
 Break a large model down, transparently
 ---------------------------------------
 
