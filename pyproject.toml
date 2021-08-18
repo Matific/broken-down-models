@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "broken-down-model"
+name = "broken-down-models"
 version = "0.1.0"
 description = "A set of utlities for breaking a large Django model down to separate components"
 authors = ["Shai Berger <shai.berger@slatescience.com>"]
