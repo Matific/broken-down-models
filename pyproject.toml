@@ -2,6 +2,9 @@
 name = "broken-down-models"
 version = "0.1.0"
 description = "A set of utlities for breaking a large Django model down to separate components"
+readme = "README.rst"
+homepage = "https://github.com/Matific/broken-down-models"
+documentation = "https://broken-down-models.readthedocs.io/en/latest/intro.html"
 authors = ["Shai Berger <shai.berger@slatescience.com>"]
 license = "MIT"
 packages = [
@@ -19,6 +22,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Database",
 ]
+keywords = ["Django", "models", "database", "optimization", "refactoring"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
