@@ -3,6 +3,7 @@ import warnings
 
 import django
 from django.core import checks
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models, connections, transaction
 from django.db.models.options import Options
 from django.utils.functional import cached_property, partition
@@ -492,3 +493,51 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
                 sender=origin, instance=self, created=(not updated),
                 update_fields=update_fields, raw=raw, using=using,
             )
+
+    def _save_parents(self, cls, using, update_fields):
+        """Save all the parents of cls using values from self."""
+        # Overridden for efficiency. We know it is likely that some
+        # parents don't really need to be handled
+        meta = cls._meta
+        inserted = False
+        update_parents = self._filter_update_parents(cls, update_fields)
+        for parent, field in meta.parents.items():
+            if parent not in update_parents:
+                continue
+            # Make sure the link fields are synced between parent and self.
+            if (field and getattr(self, parent._meta.pk.attname) is None and
+                    getattr(self, field.attname) is not None):
+                setattr(self, parent._meta.pk.attname, getattr(self, field.attname))
+            parent_inserted = self._save_parents(cls=parent, using=using, update_fields=update_fields)
+            updated = self._save_table(
+                cls=parent, using=using, update_fields=update_fields,
+                force_insert=parent_inserted,
+            )
+            if not updated:
+                inserted = True
+            # Set the parent's PK value to self.
+            if field:
+                setattr(self, field.attname, self._get_pk_val(parent._meta))
+                # Since we didn't have an instance of the parent handy set
+                # attname directly, bypassing the descriptor. Invalidate
+                # the related object cache, in case it's been accidentally
+                # populated. A fresh instance will be re-built from the
+                # database if necessary.
+                if field.is_cached(self):
+                    field.delete_cached_value(self)
+        return inserted
+
+    def _filter_update_parents(self, cls, update_fields):
+        meta = cls._meta
+        candidate_fields = update_fields if update_fields is not None else self.__dict__.keys()
+        update_parents = set()
+        for name in candidate_fields:
+            try:
+                update_parents.add(meta.get_field(name).model)
+            except FieldDoesNotExist:
+                # name is not a field in the current model. Could
+                # be a field in another model in the hierarchy or
+                # an instance attribute that isn't a field
+                pass
+        update_parents.discard(cls)
+        return update_parents
