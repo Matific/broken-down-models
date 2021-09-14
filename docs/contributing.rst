@@ -109,6 +109,30 @@ We use `poetry`_ to manage builds and `tox`_ to manage tests.
 .. _poetry: https://python-poetry.org/
 .. _tox: https://tox.readthedocs.io/en/latest/
 
+If you want to dive into the code, we highly recommend reading the
+:doc:`detailed explanations<./details>`.
+
+Tests are collected in several groups:
+
+- Tests which do not require database interaction are in the ``tests.py``
+  module of the ``bdmodels`` package. These are mostly about the
+  construction of fields and models.
+  
+- Tests which do require database interaction have been put into a test
+  project, ``test_bdmodels``. These include:
+
+  + Tests for querying, in ``testapp``. This is an app that defines the
+    models to be used in tests, and the tests that use them.
+
+  + A special module for profiling, ``testapp/test_profile.py``. See its
+    docstring for details.
+
+  + Tests for the migration operations, in an app called ``testmigs``.
+
+  + Test apps brought over from Django's test suite, in order to
+    validate further uses of relation fields with our Virtual relation
+    fields; these require some adaptation, which is still a work in
+    progress.
 
 .. [*] After they stole it from the late `SpeakUp!`_ project
 .. _`SpeakUp!`: http://web.archive.org/web/20141109123859/http://speakup.io/coc.html
