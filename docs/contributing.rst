@@ -4,8 +4,7 @@ Contribution Guide
 Contributions to this project, in all forms, are welcome. At this
 point, we do not have formal governance or roles; the community that
 we hope to form around this code will set them up as necessary. The
-project is originally developed and shepherded by `Matific`_, AKA
-Slate Science.
+project is originally developed and shepherded by `Matific`_.
 
 Community
 ---------
@@ -24,7 +23,7 @@ In all communications and actions related to this project we ask that
 you respect the code of conduct we blatantly copied from `Django`_ [*].
 
 .. _Matific: https://www.matific.com/
-.. _Github: https://www.github.com/SlateScience/BrokenDownModels
+.. _Github: https://github.com/Matific/broken-down-models
 .. _`Django Forum`: https://forum.djangoproject.com
 .. _`@shaib_il`: https://twitter.com/shaib_il/
 .. _Django: https://www.djangoproject.com/conduct/
