@@ -71,6 +71,17 @@ calls in surprising ways.
 The library does not handle the database constraints that should be imposed
 between a model and its broken-out components.
 
+Updating model fields with values based on other fields using ``F()``-expressions
+does not work across MTI relations -- this is a Django limitation; see Django
+tickets 30044_, 33091_ and 25643_. When breaking down a model with this library,
+one may cause working code to break over this: If the code performs an update
+using ``F()``-expressions, and one of the relevant fields is moved to a parent
+model, then after the change, the code will run into the Django issues.
+
+.. _30044: https://code.djangoproject.com/ticket/30044
+.. _33091: https://code.djangoproject.com/ticket/33091
+.. _25643: https://code.djangoproject.com/ticket/25643
+
 The Refactoring Process
 .......................
 
