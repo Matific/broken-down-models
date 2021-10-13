@@ -1,5 +1,5 @@
-bdmodels package
-================
+Package reference
+=================
 
 bdmodels.models
 ---------------

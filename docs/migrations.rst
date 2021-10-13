@@ -178,8 +178,8 @@ If we look at it from the angle of the generated migration, we:
   2. Removed the ``AlterField`` operation;
   3. Changed the ``AddField`` operations into :py:func:`AddVirtualField
      <bdmodels.migration_ops.AddVirtualField>` operations;
-  4. Added a 2\ :sup:`nd` migration with data-copying operations;
-  5. Moved the ``RemoveField`` operations to a 3\ :sup:`rd` migration which we
+  4. Added a second migration with data-copying operations;
+  5. Moved the ``RemoveField`` operations to a third migration which we
      added.
 
  
