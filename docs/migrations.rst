@@ -81,6 +81,17 @@ new relations which use ``id`` as their base field, it gets confused into
 thinking that ``id`` is the relation field. But we know better; we don't want
 ``id`` changed in any way by the migration, and we will remove this operation.
 
+.. admonition:: The order of ``VirtualParentLink`` fields
+
+   For reasons related to the above, Django's migration auto-detector gets
+   confused when the order of ``VirtualParentLink`` fields in the model
+   differs from the order in which the migrations add them to the model.
+   When this happens, it insists on re-adding the ``AlterField`` operation
+   (and if we do not add it, Django will complain about changes in the models
+   not being reflected in migrations). Until this limitation is overcome,
+   we will just need to keep these fields in the order in which they were
+   added.
+
 With all this in mind, we will edit the migration accordingly:
 
   1. The new parent models are exactly as we need them, leave them be;
