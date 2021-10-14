@@ -49,17 +49,3 @@ This way, all the fields are still fields of of the model we started with,
 for all purposes -- including not just attribute access, but also ORM queries.
 For this to really work well, though, some further modifications are required;
 this is why the library exists, and it is explained in its documentation.
-
-Project TODO
-------------
-
-#. Make sure ``VirtualForeignKey`` and ``VirtualOneToOneField`` can be used
-   when their ``from_field`` is not the primary key. Add tests to cover these cases.
-#. Consider more tests to take from Django, related to FKs and 1to1s.
-#. Consider Providing our own ``ModelBackend`` and/or a Mixin for ``ModelBackend``
-   to provide the override described under `Optimizing Queries` in the documentation.
-#. Activate the tests copied from Django
-#. Add MySql support, see
-   https://www.sqlite.org/lang_update.html#update_from_in_other_sql_database_engines
-#. Make github-action matrix prettier (db names as matrix values instead
-   of db-url values)
