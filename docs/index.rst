@@ -16,6 +16,7 @@ changes this forces upon other parts of your project code.
    migrations.rst
    optimizations.rst
    details.rst
+   benchmarks.rst
    ref/bdmodels
    contributing.rst
 
