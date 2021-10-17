@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "broken-down-models"
-version = "0.1.0"
+version = "0.2.0"
 description = "A set of utlities for breaking a large Django model down to separate components"
 readme = "README.rst"
 homepage = "https://github.com/Matific/broken-down-models"

@@ -6,7 +6,7 @@ Release History
 +++++++++++++++++++++++
 
 
-0.2.0 (In development)
+0.2.0
 ++++++++++++++++++++++
 
 Performance
@@ -18,3 +18,11 @@ Internal
 --------
 
 * Add tests for profiling
+
+Documentation
+-------------
+
+* Document some limitations
+* Add this change-log
+* Add some details for contributors
+* Add benchmarks
