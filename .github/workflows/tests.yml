@@ -47,4 +47,9 @@ jobs:
     - name: Tox me
       run: |
         TOXPY="py$( echo ${{ matrix.python-version }} | sed s/\\.// )"
-        BDMODELS_DB=${{ matrix.db_url }} tox -e $TOXPY-'django{22,31,32}'
+        if [ $TOXPY == 'py37' ]; then
+           TOXDJ='django{22,31,32}'
+        else
+           TOXDJ='django{22,31,32,40}'
+        fi
+        BDMODELS_DB=${{ matrix.db_url }} tox -e $TOXPY-"$TOXDJ"

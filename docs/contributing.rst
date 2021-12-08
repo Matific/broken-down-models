@@ -101,8 +101,9 @@ repository. Changes to code should be accompanied by respective changes
 to tests and documentation, where relevant.
 
 The project is tested against Python>=3.7 and supported versions of
-Django (2.2.x, 3.1.x and 3.2.x at the time this is written). We strongly
-recommend the latest stable point-release of each of the above.
+Django (2.2.x, 3.1.x, 3.2.x and 4.0.x at the time this is written). We
+strongly recommend the latest stable point-release of each of the
+above.
 
 We use `poetry`_ to manage builds and `tox`_ to manage tests.
 
