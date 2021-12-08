@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='BigModel',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(primary_key=True, serialize=False)),
                 ('a', models.BooleanField(default=True)),
                 ('b', models.BooleanField(null=True)),
                 ('c', models.IntegerField(default=3)),

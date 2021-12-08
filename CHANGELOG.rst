@@ -2,8 +2,14 @@ Release History
 ===============
 
 
-0.1.0 - Initial Release
+0.2.1 (in development)
 +++++++++++++++++++++++
+
+Supported versions
+------------------
+
+* Add testing against Django 4.0
+
 
 
 0.2.0
@@ -26,3 +32,6 @@ Documentation
 * Add this change-log
 * Add some details for contributors
 * Add benchmarks
+
+0.1.0 - Initial Release
++++++++++++++++++++++++
