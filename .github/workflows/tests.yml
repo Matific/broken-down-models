@@ -32,7 +32,7 @@ jobs:
     steps:
     - name: Update Sqlite
       run: |
-        sudo apt-add-repository -y --update 'deb http://archive.ubuntu.com/ubuntu groovy main'
+        sudo apt-add-repository -y --update 'deb http://archive.ubuntu.com/ubuntu hirsute main'
         sudo apt install -y sqlite3
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
