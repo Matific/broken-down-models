@@ -2,13 +2,15 @@ Release History
 ===============
 
 
-0.2.1 (in development)
-+++++++++++++++++++++++
+0.2.1
++++++
 
 Supported versions
 ------------------
 
-* Add testing against Django 4.0
+* Add support for Django 4.0
+
+  (only needed to update tests and documentation)
 
 
 
