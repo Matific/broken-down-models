@@ -1,5 +1,6 @@
 from django import VERSION as DJANGO_VERSION
 from django.contrib.auth import get_user_model
+from django.db import DatabaseError, transaction
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
 
 from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB
@@ -326,3 +327,30 @@ class BulkCreateTestCase(TestCase):
         with self.assertNumQueries(3):
             for kid in kids:
                 self.assertIs(kid.parc_zit, True)
+
+    def test_ignore_on_conflict(self):
+        children = [
+            Child(id=22, para_name='A0', parb_name='B0', parc_name='C0', parc_zit=True, child_name='X0'),
+            Child(id=23, para_name='A1', parb_name='B1', parc_name='C1', parc_zit=True, child_name='X1'),
+            Child(id=24, para_name='A2', parb_name='B2', parc_name='C2', parc_zit=True, child_name='X2'),
+        ]
+        children[0].save()
+        # Make sure conflicts are a problem...
+        with self.assertRaises(DatabaseError):
+            with transaction.atomic():
+                Child.objects.bulk_create(children)
+        # ... which can be ignored
+        Child.objects.bulk_create(children, ignore_conflicts=True)
+        kids = Child.objects.filter(child_name__in=['X0', 'X1', 'X2'])
+        self.assertEqual(len(kids), 3)
+
+    def test_update_on_conflict_errors_out(self):
+        children = [
+            Child(id=22, para_name='A0', parb_name='B0', parc_name='C0', parc_zit=True, child_name='X0'),
+            Child(id=23, para_name='A1', parb_name='B1', parc_name='C1', parc_zit=True, child_name='X1'),
+            Child(id=24, para_name='A2', parb_name='B2', parc_name='C2', parc_zit=True, child_name='X2'),
+        ]
+        with self.assertRaises(NotImplementedError):
+            Child.objects.bulk_create(children, update_conflicts=True)
+        with self.assertRaises(NotImplementedError):
+            Child.objects.bulk_create(children, update_fields=['child_name'])

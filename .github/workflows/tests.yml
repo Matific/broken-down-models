@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10"]
         db_url: [ '', 'postgresql://pg:pgpass@localhost/bdmodels' ]
 
     steps:
@@ -47,9 +47,11 @@ jobs:
     - name: Tox me
       run: |
         TOXPY="py$( echo ${{ matrix.python-version }} | sed s/\\.// )"
-        if [ $TOXPY == 'py37' ]; then
-           TOXDJ='django{22,31,32}'
-        else
-           TOXDJ='django{22,31,32,40}'
-        fi
+        # Keeping this block for reference on how we choose Django versions based on Python
+        # if [ $TOXPY == 'py37' ]; then
+        #    TOXDJ='django{22,31,32}'
+        # else
+        #    TOXDJ='django{22,31,32,40}'
+        # fi
+        TOXDJ='django{32,40,41,main}'
         BDMODELS_DB=${{ matrix.db_url }} tox -e $TOXPY-"$TOXDJ"

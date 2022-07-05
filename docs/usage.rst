@@ -14,9 +14,9 @@ setting.
 Requirements
 ............
 
-Broken-Down-Models is tested against CPython 3.7, 3.8 and 3.9, Django
-2.2, 3.1, 3.2 and 4.0 (except for the Python 3.7/Django 4.0
-combination, not supported by Django), PostgreSQL and SQLite.
+Broken-Down-Models is tested against CPython 3.8, 3.9 and 3.10, with
+Django 3.2, 4.0 and 4.1 (and the tip of the ``main`` branch),
+using PostgreSQL and SQLite.
 
 When using SQLite, Some migration operations require SQLite >= 3.3.0.  See
 :py:class:`CopyDataToPartial <bdmodels.migration_ops.CopyDataToPartial>` for
@@ -82,6 +82,12 @@ model, then after the change, the code will run into the Django issues.
 .. _30044: https://code.djangoproject.com/ticket/30044
 .. _33091: https://code.djangoproject.com/ticket/33091
 .. _25643: https://code.djangoproject.com/ticket/25643
+
+Bulk creation for models with multi-table inheritance is not yet supported
+by Django. This library provides a partial implementation, so common uses
+of ``bulk_create()`` should continue to work after breaking a model down.
+However, updating on conflict (as is supported in Django>=4.1) is not
+supported.
 
 The Refactoring Process
 .......................

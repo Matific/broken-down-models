@@ -5,6 +5,7 @@ import django
 from django.core import checks
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models, connections, transaction
+from django.db.models import constants
 from django.db.models.options import Options
 from django.utils.functional import cached_property, partition
 
@@ -111,7 +112,10 @@ class BrokenDownQuerySet(models.QuerySet):
         updated._with_parents = frozenset(self.model._meta.parents.keys())
         return updated
 
-    def bulk_create(self, objs, batch_size=None, ignore_conflicts=False):
+    def bulk_create(
+            self, objs, batch_size=None, ignore_conflicts=False,
+            update_conflicts=False, update_fields=None, unique_fields=None
+    ):
         """
         Insert each of the instances into the database. Do *not* call
         save() on each of the instances, do not send any pre/post_save
@@ -121,6 +125,10 @@ class BrokenDownQuerySet(models.QuerySet):
         models; so if the PK is an autoincrement field, the database feature
         ``can_return_rows_from_bulk_insert`` (``can_return_ids_from_bulk_insert`` on older
         Django versions) is required.
+
+        The parameters ``update_conflicts``, ``update_fields`` and ``unique_fields``
+        are present in order to match the API of Django>=4.1, but updating on conflicts
+        in bulk creation is currently not supported.
         """
         # Of importance: Broken-down models do the funny reverse thing where
         # the parents inherit their PK value from the child. So we only need
@@ -130,6 +138,9 @@ class BrokenDownQuerySet(models.QuerySet):
             raise ValueError("bulk_create batch size, if provided, must be positive")
         if not objs:
             return objs
+        on_conflict = self._check_bulk_create_options(
+            ignore_conflicts, update_conflicts, update_fields, unique_fields,
+        )
         objs = list(objs)
         self._prepare_for_bulk_create(objs)
         # Drop proxies, use the concrete model
@@ -144,11 +155,15 @@ class BrokenDownQuerySet(models.QuerySet):
             # Start with the BDModel child
             fields = meta.local_concrete_fields
             if objs_with_pk:
-                returned_columns = self._batched_insert(objs_with_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
+                # Note: calls to self._batched_insert() explicitly avoid naming the last argument,
+                # this way, with the support of our special _check_bulk_create_options() method,
+                # is compatible with both django<4.1 and django>=4.1 (under the limitation that
+                # update-on-conflict is not supported at all)
+                returned_columns = self._batched_insert(objs_with_pk, fields, batch_size, on_conflict)
                 self._set_fields_from_returned_columns(objs_with_pk, returned_columns, meta, set_pk=False)
             if objs_without_pk:
                 fields = [f for f in fields if not isinstance(f, models.AutoField)]
-                returned_columns = self._batched_insert(objs_without_pk, fields, batch_size, ignore_conflicts=ignore_conflicts)
+                returned_columns = self._batched_insert(objs_without_pk, fields, batch_size, on_conflict)
                 if _can_return_rows_from_bulk_insert(connection) and not ignore_conflicts:
                     assert len(returned_columns) == len(objs_without_pk)
                 self._set_fields_from_returned_columns(objs_without_pk, returned_columns, meta, set_pk=True)
@@ -158,12 +173,31 @@ class BrokenDownQuerySet(models.QuerySet):
                 if field:
                     self._sync_parent_pks_to_pk(objs, parent)
                     parent._base_manager.get_queryset()._batched_insert(
-                        objs, parent._meta.local_concrete_fields, batch_size, ignore_conflicts=ignore_conflicts
+                        objs, parent._meta.local_concrete_fields, batch_size, on_conflict
                     )
             for obj in objs:
                 obj._state.adding = False
                 obj._state.db = self.db
         return objs
+
+    def _check_bulk_create_options(
+        self, ignore_conflicts, update_conflicts, update_fields, unique_fields
+    ):
+        # update_conflicts and related fields not supported by this implementation
+        if update_conflicts or update_fields or unique_fields:
+            raise NotImplementedError(
+                "updating on conflict in bulk_create() is not supported for broken-down models" +
+                ("." if django.VERSION >= (4, 1) else ", nor for Django<4.1 in general.")
+            )
+        elif ignore_conflicts:
+            # The value returned from this function is passed on to self._batched_insert(),
+            # which expects different things in different versions of Django
+            if django.VERSION >= (4, 1):
+                return constants.OnConflict.IGNORE
+            else:
+                return ignore_conflicts
+        else:
+            return None
 
     def delete(self):
         # Prevent extra queries when looking up parents for deletion
