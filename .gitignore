@@ -24,6 +24,7 @@ dist/*
 *.egg-info/*
 db.sqlite3
 *.prof
+poetry.lock
 
 .ropeproject
 .gitconfig
