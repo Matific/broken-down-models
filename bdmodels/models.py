@@ -18,14 +18,6 @@ def get_field_names_to_fetch(model_set):
     return fetched_field_names
 
 
-def _can_return_rows_from_bulk_insert(connection):
-    return (
-        connection.features.can_return_rows_from_bulk_insert
-        if django.VERSION >= (3,) else
-        connection.features.can_return_ids_from_bulk_insert
-    )
-
-
 class BrokenDownQuerySet(models.QuerySet):
     """
     Special queryset for use with broken-down models.
@@ -149,7 +141,7 @@ class BrokenDownQuerySet(models.QuerySet):
         self._for_write = True
         connection = connections[self.db]
         objs_with_pk, objs_without_pk = partition(lambda o: o.pk is None, objs)
-        if objs_without_pk and not _can_return_rows_from_bulk_insert(connection):
+        if objs_without_pk and not connection.features.can_return_rows_from_bulk_insert:
             raise ValueError(f"On {connection.vendor} bulk_create for broken-down models requires that PKs be set")
         with transaction.atomic(using=self.db, savepoint=False):
             # Start with the BDModel child
@@ -164,7 +156,7 @@ class BrokenDownQuerySet(models.QuerySet):
             if objs_without_pk:
                 fields = [f for f in fields if not isinstance(f, models.AutoField)]
                 returned_columns = self._batched_insert(objs_without_pk, fields, batch_size, on_conflict)
-                if _can_return_rows_from_bulk_insert(connection) and not ignore_conflicts:
+                if connection.features.can_return_rows_from_bulk_insert and not ignore_conflicts:
                     assert len(returned_columns) == len(objs_without_pk)
                 self._set_fields_from_returned_columns(objs_without_pk, returned_columns, meta, set_pk=True)
             # Now everyone has PKs, we can proceed with objs
@@ -221,19 +213,6 @@ class BrokenDownQuerySet(models.QuerySet):
                 setattr(obj, parent_pk_attname, obj.pk)
             elif parent_pk != obj.pk:
                 raise ValueError(f"Broken-Down object {obj} has part {parent} with inconsistent id {parent_pk}")
-
-    if django.VERSION < (3,):
-        @staticmethod  # noqa: F811  # Python<3.9 says this is the line of the method def
-        def _set_fields_from_returned_columns(objs, returned_columns, _, *, set_pk):  # noqa: F811  # Redefined on purpose
-            """This implementation works with Django<3.0"""
-            if not set_pk:
-                return
-            for obj, pk in zip(objs, returned_columns):
-                obj.pk = pk
-
-    if django.VERSION < (3, 2,):
-        def _prepare_for_bulk_create(self, objs):
-            return self._populate_pk_values(objs)
 
 
 class BrokenDownManager(models.Manager.from_queryset(BrokenDownQuerySet)):

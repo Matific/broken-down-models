@@ -1,15 +1,8 @@
-from django import VERSION as DJANGO_VERSION
 from django.contrib.auth import get_user_model
 from django.db import DatabaseError, transaction
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
 
 from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB
-
-can_return_rows_from_bulk_insert = (
-    'can_return_ids_from_bulk_insert'
-    if DJANGO_VERSION < (3, 0) else
-    'can_return_rows_from_bulk_insert'
-)
 
 
 # TODO: Rename test classes
@@ -290,7 +283,7 @@ class ObjectUpdateTestCase(TestCase):
 
 class BulkCreateTestCase(TestCase):
 
-    @skipIfDBFeature(can_return_rows_from_bulk_insert)
+    @skipIfDBFeature('can_return_rows_from_bulk_insert')
     def test_unsupported_backend(self):
         children = [
             Child(para_name='A0', parb_name='B0', parc_name='C0', parc_zit=True, child_name='X0'),
@@ -300,7 +293,7 @@ class BulkCreateTestCase(TestCase):
         with self.assertRaisesMessage(ValueError, 'bulk_create for broken-down models requires that PKs be set'):
             Child.objects.bulk_create(children)
 
-    @skipUnlessDBFeature(can_return_rows_from_bulk_insert)
+    @skipUnlessDBFeature('can_return_rows_from_bulk_insert')
     def test_supported_backend(self):
         children = [
             Child(para_name='A0', parb_name='B0', parc_name='C0', parc_zit=True, child_name='X0'),
