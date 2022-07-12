@@ -2,7 +2,7 @@ Release History
 ===============
 
 
-0.3.0 (in development)
+0.3.0
 +++++
 
 Supported versions
