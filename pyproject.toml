@@ -40,7 +40,7 @@ dj-database-url = "^0.5.0"
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py{38,39,310}-django{32,40,41,main}
+envlist = py{38,39,310}-django{32,40,41,42}, py311-django{41,42,main}
 isolated_build = True
 skipsdist = True
 
@@ -50,9 +50,10 @@ deps =
 
     django32: Django>=3.2,<3.3
     django40: Django>=4.0,<4.1
-    django41: git+https://github.com/django/django.git@stable/4.1.x#egg=django
+    django41: Django>=4.1,<4.2
+    django42: git+https://github.com/django/django.git@stable/4.2.x#egg=django
     djangomain: git+https://github.com/django/django.git@main#egg=django
-    psycopg2
+    psycopg2-binary
     dj-database-url>=0.5.0,<0.6
 
 changedir = test_bdmodels
