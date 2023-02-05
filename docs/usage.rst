@@ -15,8 +15,9 @@ Requirements
 ............
 
 Broken-Down-Models is tested against CPython 3.8, 3.9 and 3.10, with
-Django 3.2, 4.0 and 4.1 (and the tip of the ``main`` branch),
-using PostgreSQL and SQLite.
+Django 3.2, 4.0, 4.1 and 4.2, using PostgreSQL and SQLite. Versions
+4.1, 4.2 and the tip of the ``main`` branch, which support Python 3.11,
+are also tested against it.
 
 When using SQLite, Some migration operations require SQLite >= 3.3.0.  See
 :py:class:`CopyDataToPartial <bdmodels.migration_ops.CopyDataToPartial>` for
