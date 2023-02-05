@@ -10,22 +10,27 @@ Community
 ---------
 
 The project is run and managed on `Github`_. For issues or pull requests,
-please use the tools provided there. For questions or support, please
-reach out to project contributors:
+please use the tools provided there. For questions or support, you can either
+use `Github discussions`_, or reach out to project contributors:
 
 +-------------+-----------------+---------------+-----------------------+
 | Contributor | `Django Forum`_ | Github        | Other                 |
 +=============+=================+===============+=======================+
 | Shai Berger | shaib           | shaib         | Twitter: `@shaib_il`_ |
+|             |                 |               |                       |
+|             |                 |               | Fediverse:            |
+|             |                 |               | `@shaib@tooot.im`_    |
 +-------------+-----------------+---------------+-----------------------+
 
 In all communications and actions related to this project we ask that
-you respect the code of conduct we blatantly copied from `Django`_ [*].
+you respect the code of conduct we blatantly copied from `Django`_ [*]_.
 
 .. _Matific: https://www.matific.com/
 .. _Github: https://github.com/Matific/broken-down-models
+.. _Github discussions: https://github.com/Matific/broken-down-models/discussions
 .. _`Django Forum`: https://forum.djangoproject.com
 .. _`@shaib_il`: https://twitter.com/shaib_il/
+.. _`@shaib@tooot.im`: https://tooot.im/@shaib
 .. _Django: https://www.djangoproject.com/conduct/
 
 Code of Conduct
@@ -101,10 +106,9 @@ repository. Changes to code should be accompanied by respective changes
 to tests and documentation, where relevant.
 
 The project is tested against Python>=3.8 and supported versions of
-Django (3.2.x, 4.0.x and the upcoming 4.1.x at the time this is written),
-as well as Django's main branch. We
-strongly recommend the latest stable point-release of each of the
-above.
+Django (3.2.x and 4.x.y at the time this is written), as well as
+Django's main branch. We strongly recommend the latest stable
+point-release of each of the above.
 
 We use `poetry`_ to manage builds and `tox`_ to manage tests.
 

@@ -31,10 +31,12 @@ class BrokenDownQuerySet(models.QuerySet):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._with_parents = frozenset()
+        self._with_virtuals = frozenset()
 
     def _clone(self):
         c = super()._clone()
         c._with_parents = self._with_parents
+        c._with_virtuals = self._with_virtuals
         return c
 
     @property
@@ -59,29 +61,50 @@ class BrokenDownQuerySet(models.QuerySet):
                     continue
 
                 ptr_name = link.name
-                for field in field_heads:
+                for field in field_heads.copy():
                     if field == ptr_name:
                         with_parents.add(parent)
+                        field_heads.remove(field)
                         break
                     else:
                         field_obj = self.model._meta.get_field(field)
                         if field_obj.model == parent:
                             with_parents.add(parent)
+                            field_heads.remove(field)
                             break
 
-            this = self.update_fetched_parents(with_parents)
+            # Anything left in field_heads at this point is either a virtual relation field
+            # (which still needs special treatment) or a regular field which can be handled
+            # by the normal mechanisms
+            virtuals = frozenset()
+            if field_heads:
+                related_fields = (self._concrete_model._meta.get_field(field) for field in field_heads)
+                virtuals = frozenset(
+                    field for field in related_fields if getattr(field, 'can_share_attribute', False)
+                )
+            this = self.update_fetched_parents(with_parents, virtuals)
             return super(BrokenDownQuerySet, this).select_related(*fields)
         else:
             return self.select_related_with_all_parents()
 
-    def update_fetched_parents(self, parent_set, *, force_update_deferrals=False):
-        """Update the set of fetched parents, and reset the set of deferred fields accordingly"""
-        if (not force_update_deferrals) and parent_set == self._with_parents:
+    def update_fetched_parents(self, parent_set, virtual_fields=frozenset(), *, force_update_deferrals=False):
+        """
+        Update the set of fetched parents, and reset the set of deferred fields accordingly
+
+        Virtual fields not related to parents also need special handling, or else they are forced
+        to be deferred
+        """
+        if (
+            (not force_update_deferrals)
+            and parent_set == self._with_parents
+            and virtual_fields == self._with_virtuals
+        ):
             return self
 
         fetched_field_names = self._get_field_names_to_fetch(parent_set)
-        updated = self.only(*fetched_field_names)
+        updated = self.only(*fetched_field_names, *(field.name for field in virtual_fields))
         updated._with_parents = frozenset(parent_set)
+        updated._with_virtuals = frozenset(virtual_fields)
         return updated
     update_fetched_parents.queryset_only = True
 
