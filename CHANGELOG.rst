@@ -1,6 +1,18 @@
 Release History
 ===============
 
+0.3.1
++++++
+
+Supported versions
+------------------
+
+* Add support for upcoming Django 4.2
+
+  (required a minor, backwards-compatible change in internal API)
+
+* Add testing against Python 3.11 with supporting Django versions
+
 
 0.3.0
 +++++

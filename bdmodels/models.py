@@ -88,7 +88,12 @@ class BrokenDownQuerySet(models.QuerySet):
             return self.select_related_with_all_parents()
 
     def update_fetched_parents(self, parent_set, virtual_fields=frozenset(), *, force_update_deferrals=False):
-        """Update the set of fetched parents, and reset the set of deferred fields accordingly"""
+        """
+        Update the set of fetched parents, and reset the set of deferred fields accordingly
+
+        Virtual fields not related to parents also need special handling, or else they are forced
+        to be deferred
+        """
         if (
             (not force_update_deferrals)
             and parent_set == self._with_parents
