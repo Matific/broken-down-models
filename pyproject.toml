@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "broken-down-models"
-version = "0.3.1"
+version = "0.5.0"
 description = "A set of utlities for breaking a large Django model down to separate components"
 readme = "README.rst"
 homepage = "https://github.com/Matific/broken-down-models"
@@ -16,32 +16,31 @@ classifiers = [
     # Classifiers for Python versions and license added automatically by Poetry
     "Development Status :: 4 - Beta",
     "Framework :: Django",
-    "Framework :: Django :: 3.2",
-    "Framework :: Django :: 4.0",
-    "Framework :: Django :: 4.1",
-    "Framework :: Django :: 4",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
+    "Framework :: Django :: 5.1",
+    "Framework :: Django :: 5.2",
     "Intended Audience :: Developers",
     "Topic :: Database",
 ]
 keywords = ["Django", "models", "database", "optimization", "refactoring"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-django = ">= 3.2"
+python = "^3.9"
+django = ">= 4.2"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 ipython = "*"
 flake8 = "*"
-tox = "^3.23.1"
-Sphinx = "^4.0.2"
-sphinx-rtd-theme = "^0.5.2"
-dj-database-url = "^0.5.0"
-
+tox = "^4.24.1"
+Sphinx = "~7.4.7"
+sphinx-rtd-theme = "~3.0.2"
+dj-database-url = "^2.3.0"
 
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py{38,39,310}-django{32,40,41,42}, py311-django{41,42,main}
+envlist = py39-django42, py{310,311,312}-django{42,50,51,52}, py313-django{51,52,main}
 isolated_build = True
 skipsdist = True
 
@@ -49,13 +48,13 @@ skipsdist = True
 deps =
     flake8
 
-    django32: Django>=3.2,<3.3
-    django40: Django>=4.0,<4.1
-    django41: Django>=4.1,<4.2
-    django42: git+https://github.com/django/django.git@stable/4.2.x#egg=django
+    django42: Django>=4.2,<4.3
+    django50: Django>=5.0,<5.1
+    django51: Django>=5.1,<5.2
+    django52: Django>=5.2,<5.3
     djangomain: git+https://github.com/django/django.git@main#egg=django
     psycopg2-binary
-    dj-database-url>=0.5.0,<0.6
+    dj-database-url>=2.3.0,<3.0
 
 changedir = test_bdmodels
 
