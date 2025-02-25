@@ -274,7 +274,7 @@ class BrokenDownModelBase(models.base.ModelBase):
     def add_to_class(cls, name, value):
         if name == '_meta':
             # We only mess with 'vanilla' Options
-            if type(value) == Options:
+            if type(value) is Options:
                 value.__class__ = BrokenDownOptions
             else:
                 # If anybody else already messed with it, we bail out
