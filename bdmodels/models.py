@@ -138,8 +138,7 @@ class BrokenDownQuerySet(models.QuerySet):
 
         Setting the primary key attribute, if it is not set, is required for broken-down
         models; so if the PK is an autoincrement field, the database feature
-        ``can_return_rows_from_bulk_insert`` (``can_return_ids_from_bulk_insert`` on older
-        Django versions) is required.
+        ``can_return_rows_from_bulk_insert`` is required.
 
         The parameters ``update_conflicts``, ``update_fields`` and ``unique_fields``
         are present in order to match the API of Django>=4.1, but updating on conflicts
@@ -201,16 +200,11 @@ class BrokenDownQuerySet(models.QuerySet):
         # update_conflicts and related fields not supported by this implementation
         if update_conflicts or update_fields or unique_fields:
             raise NotImplementedError(
-                "updating on conflict in bulk_create() is not supported for broken-down models" +
-                ("." if django.VERSION >= (4, 1) else ", nor for Django<4.1 in general.")
+                "updating on conflict in bulk_create() is not supported for broken-down models."
             )
         elif ignore_conflicts:
-            # The value returned from this function is passed on to self._batched_insert(),
-            # which expects different things in different versions of Django
-            if django.VERSION >= (4, 1):
-                return constants.OnConflict.IGNORE
-            else:
-                return ignore_conflicts
+            # The value returned from this function is passed on to self._batched_insert()
+            return constants.OnConflict.IGNORE
         else:
             return None
 
@@ -320,7 +314,7 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         self.refresh_from_db(using=using, fields=all_fields)  # TODO: Use .refresh_from_db(all_parents=True)
         return super().delete(using=using, keep_parents=keep_parents)
 
-    def refresh_from_db(self, using=None, fields=None, *, all_parents: bool = False):
+    def refresh_from_db(self, using=None, fields=None, from_queryset=None, *, all_parents: bool = False):
         """
         This method is overridden for two purposes.
 
@@ -331,6 +325,10 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
         load all the fields, using it together with ``fields`` makes no sense and is
         an error.
         """
+        if django.VERSION <= (5, 1) and from_queryset is not None:
+            raise NotImplementedError(
+                "from_queryset argument to refresh_from_db() is not supported by Django<5.1."
+            )
         opts = self._concrete_meta
         if fields:
             if all_parents:
@@ -342,7 +340,10 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
             fields = list(set(all_fields) - set(self.__dict__.keys()) | set(fields))
         elif all_parents:
             fields = [field.name for field in opts.concrete_fields]
-        super().refresh_from_db(using, fields)
+        if django.VERSION <= (5, 1):
+            super().refresh_from_db(using, fields)
+        else:
+            super().refresh_from_db(using, fields, from_queryset)
 
     @property
     def _concrete_meta(self):
