@@ -530,24 +530,26 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
                 update_fields=update_fields, raw=raw, using=using,
             )
 
-    def _save_parents(self, cls, using, update_fields):
+    def _save_parents(self, cls, using, update_fields, force_insert=(), updated_parents=None):
         """Save all the parents of cls using values from self."""
         # Overridden for efficiency. We know it is likely that some
         # parents don't really need to be handled
         meta = cls._meta
         inserted = False
-        update_parents = self._filter_update_parents(cls, update_fields)
+        parents_to_save = self._filter_parents_to_save(cls, update_fields)
         for parent, field in meta.parents.items():
-            if parent not in update_parents:
+            if parent not in parents_to_save:
                 continue
             # Make sure the link fields are synced between parent and self.
             if (field and getattr(self, parent._meta.pk.attname) is None and
                     getattr(self, field.attname) is not None):
                 setattr(self, parent._meta.pk.attname, getattr(self, field.attname))
-            parent_inserted = self._save_parents(cls=parent, using=using, update_fields=update_fields)
+            parent_inserted = self._save_parents(
+                cls=parent, using=using, update_fields=update_fields, force_insert=force_insert, updated_parents=updated_parents,
+            )
             updated = self._save_table(
                 cls=parent, using=using, update_fields=update_fields,
-                force_insert=parent_inserted,
+                force_insert=parent_inserted or issubclass(parent, force_insert),
             )
             if not updated:
                 inserted = True
@@ -563,7 +565,7 @@ class BrokenDownModel(models.Model, metaclass=BrokenDownModelBase):
                     field.delete_cached_value(self)
         return inserted
 
-    def _filter_update_parents(self, cls, update_fields):
+    def _filter_parents_to_save(self, cls, update_fields):
         meta = cls._meta
         candidate_fields = update_fields if update_fields is not None else self.__dict__.keys()
         update_parents = set()
