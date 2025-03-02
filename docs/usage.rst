@@ -14,10 +14,11 @@ setting.
 Requirements
 ............
 
-Broken-Down-Models is tested against CPython 3.8, 3.9 and 3.10, with
-Django 3.2, 4.0, 4.1 and 4.2, using PostgreSQL and SQLite. Versions
-4.1, 4.2 and the tip of the ``main`` branch, which support Python 3.11,
-are also tested against it.
+Broken-Down-Models is tested against CPython 3.10-3.12, with
+Django 4.2, 5.0, 5.1 and 5.2, using PostgreSQL and SQLite. Django 4.2
+is also tested with Python 3.9; Django versions 5.1, 5.2 and the tip
+of the ``main`` branch, which support Python 3.13, are also tested
+against it.
 
 When using SQLite, Some migration operations require SQLite >= 3.3.0.  See
 :py:class:`CopyDataToPartial <bdmodels.migration_ops.CopyDataToPartial>` for

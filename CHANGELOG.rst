@@ -1,6 +1,24 @@
 Release History
 ===============
 
+0.5.0
++++++
+
+Supported versions
+------------------
+
+* Add support for Django 5.0, 5.1, 5.2
+* Add testing with Python 3.12 and 3.13 (with supporting Django versions)
+* Drop support for Django<4.2
+* Drop all testing with Python<3.9
+
+API
+---
+
+* Optional argument ``from_query_set`` added on the ``refresh_from_db()``
+  Model method, to conform with Django>=5.1 API. Trying to use it with earlier
+  Django version raises an error.
+
 0.3.1
 +++++
 

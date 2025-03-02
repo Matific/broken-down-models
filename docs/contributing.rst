@@ -105,8 +105,8 @@ The code and documentation for the project are included in the same
 repository. Changes to code should be accompanied by respective changes
 to tests and documentation, where relevant.
 
-The project is tested against Python>=3.8 and supported versions of
-Django (3.2.x and 4.x.y at the time this is written), as well as
+The project is tested against Python>=3.9 and supported versions of
+Django (4.2.x and 5.x.y at the time this is written), as well as
 Django's main branch. We strongly recommend the latest stable
 point-release of each of the above.
 

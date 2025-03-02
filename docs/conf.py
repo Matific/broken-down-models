@@ -23,7 +23,7 @@ django.setup()
 # -- Project information -----------------------------------------------------
 
 project = 'Broken-Down-Models'
-copyright = '2021, Matific Ltd'
+copyright = '2021-2025, Matific Ltd'
 author = 'Shai Berger (Matific)'
 
 
@@ -39,7 +39,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    'django': ('https://docs.djangoproject.com/en/3.2/', 'http://docs.djangoproject.com/en/3.2/_objects/'),
+    'django': ('https://docs.djangoproject.com/en/5.2/', 'http://docs.djangoproject.com/en/5.2/_objects/'),
 }
 
 # Add any paths that contain templates here, relative to this directory.
