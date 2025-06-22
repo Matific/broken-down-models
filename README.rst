@@ -48,4 +48,6 @@ parent models, and the core set is defined in a model which inherits them all.
 This way, all the fields are still fields of of the model we started with,
 for all purposes -- including not just attribute access, but also ORM queries.
 For this to really work well, though, some further modifications are required;
-this is why the library exists, and it is explained in its documentation.
+this is why the library exists, and it is explained in its `documentation`_.
+
+.. _documentation: https://broken-down-models.readthedocs.io/en/latest/
