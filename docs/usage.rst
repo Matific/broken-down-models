@@ -20,7 +20,7 @@ is also tested with Python 3.9; Django versions 5.1, 5.2 and the tip
 of the ``main`` branch, which support Python 3.13, are also tested
 against it.
 
-When using SQLite, Some migration operations require SQLite >= 3.3.0.  See
+When using SQLite, Some migration operations require SQLite >= 3.33.0.  See
 :py:class:`CopyDataToPartial <bdmodels.migration_ops.CopyDataToPartial>` for
 details -- as far as we're aware, that is also the main hurdle to using
 the library with MySQL, Oracle, or any other DBMS (and like any good

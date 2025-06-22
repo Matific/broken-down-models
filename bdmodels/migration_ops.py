@@ -45,7 +45,7 @@ class CopyDataToPartial(Operation):
     Compatibility
         While ``INSERT-SELECT`` is standard SQL, ``UPDATE`` with a join
         (A.K.A ``UPDATE-FROM``) is not. The library currently uses the PostgreSQL syntax,
-        which is also supported by SQLite >= 3.3.0; for this reason, the backwards side
+        which is also supported by SQLite >= 3.33.0; for this reason, the backwards side
         of this migration operation only works with these database backends. Until this
         is fixed, users who need this operation with other backends can write it as
         a :py:class:`RunSQL <django.db.migrations.operations.RunSQL>` operation.
