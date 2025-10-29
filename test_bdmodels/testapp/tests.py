@@ -2,12 +2,12 @@ from django.contrib.auth import get_user_model
 from django.db import DatabaseError, transaction
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
 
-from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB, ChildWithFetchedParents
+from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB, \
+    ChildWithFetchedParents
 
 
 # TODO: Rename test classes
 class SelectRelatedTestCase(TestCase):
-
     ChildClass = Child
 
     def setUp(self):
@@ -127,7 +127,6 @@ class SelectRelatedTestCase(TestCase):
 
 
 class AbstractBaseClassTestCase(SelectRelatedTestCase):
-
     ChildClass = TimeStampedChild
 
     def test_the_abstract_base_works(self):
@@ -142,7 +141,6 @@ class AbstractBaseClassTestCase(SelectRelatedTestCase):
 
 
 class ProxyChildClassTestCase(SelectRelatedTestCase):
-
     ChildClass = ChildProxy
 
 
@@ -212,7 +210,6 @@ class UncleTestCase(TestCase):
 
 
 class VirtualNonParentTestCase(TestCase):
-
     ChildClass = ChildWithVirtualNonParent
 
     def setUp(self):
@@ -258,7 +255,8 @@ class VirtualNonParentTestCase(TestCase):
 class ObjectUpdateTestCase(TestCase):
 
     def setUp(self) -> None:
-        self.child = Child.objects.create(id=12, para_name='A', parb_name='B', parc_name='C', parc_zit=True, child_name='Xerxes')
+        self.child = Child.objects.create(id=12, para_name='A', parb_name='B', parc_name='C', parc_zit=True,
+                                          child_name='Xerxes')
 
     def test_update_parent_field(self):
         c = Child.objects.get(id=12)
