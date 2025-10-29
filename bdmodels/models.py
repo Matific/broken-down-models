@@ -270,10 +270,29 @@ class BrokenDownOptions(Options):
     def fetched_parents(self):
         """
         Return the set of parent models that should be fetched by default.
-        This can be configured via the model's Meta.fetched_parents attribute.
 
-        Meta.fetched_parents must be a list/tuple of model classes that are
-        actual parents of the model.
+        This can be configured via the model's ``Meta.fetched_parents`` attribute,
+        which should be a list or tuple of parent model classes that will be
+        automatically fetched (using joins) whenever the model is queried.
+
+        By default, returns an empty frozenset, meaning no parents are fetched
+        automatically and all parent fields are deferred.
+
+        **Example**::
+
+            class MyModel(BrokenDownModel, ParentA, ParentB):
+                # ... field definitions ...
+
+                class Meta:
+                    fetched_parents = [ParentA]  # ParentA will be fetched by default
+
+        **Validation:**
+            - All items in ``Meta.fetched_parents`` must be Django model classes
+            - All specified models must be actual parents of the model
+            - Invalid configurations will raise ``TypeError`` or ``ValueError``
+
+        **Returns:**
+            frozenset: A frozenset of parent model classes to fetch by default
         """
         if self._fetched_parents_raw is None:
             return frozenset()

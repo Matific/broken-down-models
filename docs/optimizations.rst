@@ -78,6 +78,54 @@ To do this, modify your ``manage.py`` as follows:
 With this, every potential case of 1+N queries will be logged with a
 full stack-trace, so you can find exactly where it comes from.
 
+Configuring Default Fetched Parents
+------------------------------------
+
+By default, when you query a broken-down model, only the model's own fields
+are fetched, and all parent fields are deferred. However, if certain parent
+models are accessed frequently together with the main model, you can configure
+them to be fetched by default using the ``fetched_parents`` Meta option.
+
+This can be particularly useful when:
+
+* A parent contains fields that are accessed in most views or operations
+* You want to avoid 1+N queries in common code paths without manually adding
+  ``select_related()`` everywhere
+* Certain parents logically belong to the "core" of your model's functionality
+
+Example::
+
+    from bdmodels.models import BrokenDownModel
+    from bdmodels.fields import VirtualParentLink
+
+    class Central(BrokenDownModel, CoreFields, FrequentFields, RareFields):
+        id = models.AutoField(primary_key=True)
+        corefields_ptr = VirtualParentLink(CoreFields, on_delete=models.DO_NOTHING)
+        frequentfields_ptr = VirtualParentLink(FrequentFields, on_delete=models.DO_NOTHING)
+        rarefields_ptr = VirtualParentLink(RareFields, on_delete=models.DO_NOTHING)
+
+        class Meta:
+            # FrequentFields will be fetched by default along with Central's own fields
+            fetched_parents = [FrequentFields]
+
+With this configuration:
+
+* Queries like ``Central.objects.get(id=1)`` will automatically fetch both
+  ``Central`` and ``FrequentFields`` in a single query
+* ``RareFields`` will still be deferred and only fetched when accessed
+* You can still override this behavior:
+
+  - Use ``select_related('rarefields_ptr')`` to fetch specific parents
+  - Use ``fetch_all_parents()`` to fetch all parents
+  - The ``fetched_parents`` setting only affects the default behavior
+
+Important notes:
+
+* ``fetched_parents`` must be a list or tuple of model classes (not strings)
+* All specified models must be actual parents of the model
+* This is a performance optimization - use it judiciously based on your
+  access patterns
+
 If it's the User model
 ----------------------
 
