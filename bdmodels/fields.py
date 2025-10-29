@@ -150,7 +150,7 @@ class VirtualForeignKey(ForeignKey):
         else:
             return []
 
-    def _check_on_delete(self):
+    def _check_on_delete(self, databases=None):
         on_delete = getattr(self.remote_field, 'on_delete', None)
         if on_delete in (SET_NULL, SET_DEFAULT):
             return [
