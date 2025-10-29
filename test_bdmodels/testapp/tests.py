@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import DatabaseError, transaction
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
 
-from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB
+from .models import Child, UserChild, Nephew, TimeStampedChild, ChildProxy, ChildWithVirtualNonParent, ParentB, ChildWithFetchedParents
 
 
 # TODO: Rename test classes
@@ -279,6 +279,46 @@ class ObjectUpdateTestCase(TestCase):
         # Get a fresh copy
         c = Child.objects.get(id=12)
         self.assertFalse(c.parc_zit)
+
+
+class FetchedParentsTestCase(TestCase):
+
+    def setUp(self):
+        super().setUp()
+        ChildWithFetchedParents.objects.create(para_name='A', parb_name='B', parc_name='C', child_name='Xerxes')
+
+    def test_configured_parents_fetched_by_default(self):
+        """
+        When fetched_parents is configured in Meta, those parents are fetched
+        by default without requiring select_related().
+        """
+        with self.assertNumQueries(1):
+            c = ChildWithFetchedParents.objects.get(child_name='Xerxes')
+            # ParentA and ParentB should be fetched
+            self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
+            self.assertEqual((c.parb_zit, c.parb_name), (True, 'B'))
+        # ParentC should still require a query
+        with self.assertNumQueries(1):
+            self.assertEqual(c.parc_name, 'C')
+
+    def test_select_related_overrides_fetched_parents(self):
+        """
+        select_related() should still work and override the default fetched parents.
+        """
+        with self.assertNumQueries(1):
+            c = ChildWithFetchedParents.objects.select_related('parentc_ptr').get(child_name='Xerxes')
+            # Only ParentC should be fetched via select_related
+            self.assertEqual(c.parc_name, 'C')
+
+    def test_fetch_all_parents_still_works(self):
+        """
+        fetch_all_parents() should still fetch all parents regardless of the fetched_parents config.
+        """
+        with self.assertNumQueries(1):
+            c = ChildWithFetchedParents.objects.fetch_all_parents().get(child_name='Xerxes')
+            self.assertEqual((c.para_zit, c.para_name), (True, 'A'))
+            self.assertEqual((c.parb_zit, c.parb_name), (True, 'B'))
+            self.assertEqual(c.parc_name, 'C')
 
 
 class BulkCreateTestCase(TestCase):

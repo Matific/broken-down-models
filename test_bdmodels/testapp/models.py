@@ -92,3 +92,14 @@ class ChildWithVirtualNonParent(BrokenDownModel, ParentA):
     parenta_ptr = VirtualParentLink(ParentA, on_delete=models.DO_NOTHING)
     b = VirtualOneToOneField(ParentB, 'id', on_delete=models.DO_NOTHING)
     child_name = models.CharField(max_length=10)
+
+
+class ChildWithFetchedParents(BrokenDownModel, ParentA, ParentB, ParentC):
+    id = models.AutoField(primary_key=True)
+    parenta_ptr = VirtualOneToOneField(ParentA, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+    parentb_ptr = VirtualOneToOneField(ParentB, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+    parentc_ptr = VirtualOneToOneField(ParentC, 'id', parent_link=True, on_delete=models.DO_NOTHING)
+    child_name = models.CharField(max_length=10)
+
+    class Meta:
+        fetched_parents = [ParentA, ParentB]

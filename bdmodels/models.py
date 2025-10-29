@@ -239,10 +239,14 @@ class BrokenDownManager(models.Manager.from_queryset(BrokenDownQuerySet)):
     Connects the model to a :py:class:`BrokenDownQuerySet` (and inherits its methods, as it is built from it).
     """
     def get_queryset(self):
-        return super().get_queryset().update_fetched_parents({}, force_update_deferrals=True)
+        fetched_parents = self.model._meta.fetched_parents
+        return super().get_queryset().update_fetched_parents(fetched_parents, force_update_deferrals=True)
 
 
 class BrokenDownOptions(Options):
+    # Initialize _fetched_parents_raw to None by default
+    _fetched_parents_raw = None
+
     @cached_property
     def _forward_fields_map(self):
         res = {}
@@ -262,6 +266,40 @@ class BrokenDownOptions(Options):
                 pass
         return res
 
+    @cached_property
+    def fetched_parents(self):
+        """
+        Return the set of parent models that should be fetched by default.
+        This can be configured via the model's Meta.fetched_parents attribute.
+
+        Meta.fetched_parents must be a list/tuple of model classes that are
+        actual parents of the model.
+        """
+        if self._fetched_parents_raw is None:
+            return frozenset()
+
+        # Validate that all items are model classes and are actual parents
+        parent_models = set()
+        for parent_spec in self._fetched_parents_raw:
+            # Check if it's a model class
+            if not isinstance(parent_spec, type) or not issubclass(parent_spec, models.Model):
+                raise TypeError(
+                    f"Meta.fetched_parents must contain only Django model classes, "
+                    f"got {parent_spec!r}"
+                )
+
+            # Check if it's an actual parent of this model
+            if parent_spec not in self.parents:
+                raise ValueError(
+                    f"Meta.fetched_parents contains {parent_spec._meta.label} which is not "
+                    f"a parent of {self.label}. Valid parents are: "
+                    f"{', '.join(p._meta.label for p in self.parents.keys())}"
+                )
+
+            parent_models.add(parent_spec)
+
+        return frozenset(parent_models)
+
 
 class BrokenDownModelBase(models.base.ModelBase):
     """A hack for using our own options class"""
@@ -269,7 +307,16 @@ class BrokenDownModelBase(models.base.ModelBase):
         if name == '_meta':
             # We only mess with 'vanilla' Options
             if type(value) is Options:
+                # Extract fetched_parents from meta before it's processed
+                meta = value.meta if hasattr(value, 'meta') else None
+                fetched_parents_raw = getattr(meta, 'fetched_parents', None) if meta else None
+                # Remove it from meta so Django doesn't complain
+                if meta and hasattr(meta, 'fetched_parents'):
+                    delattr(meta, 'fetched_parents')
+
                 value.__class__ = BrokenDownOptions
+                # Store the extracted fetched_parents
+                value._fetched_parents_raw = fetched_parents_raw
             else:
                 # If anybody else already messed with it, we bail out
                 raise TypeError(f"BrokenDownModel needs to mess with the Options, but we got {type(value)}")
