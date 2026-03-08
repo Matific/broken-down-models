@@ -11,6 +11,15 @@ from django.db.models.fields.related_descriptors import ForwardOneToOneDescripto
 from django.utils.translation import gettext_lazy as _
 
 
+VALUE_MODIFYING_ON_DELETE = [SET_DEFAULT, SET_NULL]
+try:
+    # Django >=6.1
+    from django.db.models import DB_SET_DEFAULT, DB_SET_NULL
+    VALUE_MODIFYING_ON_DELETE.extend([DB_SET_DEFAULT, DB_SET_NULL])
+except ImportError:
+    pass
+
+
 class ReadOnlyForwardRelationDescriptor:
     # We do not really set anything here. Read-only. But Django mechanisms
     # will sometimes set it for us. When this is acceptable, we'll just ignore them.
@@ -150,9 +159,9 @@ class VirtualForeignKey(ForeignKey):
         else:
             return []
 
-    def _check_on_delete(self):
+    def _check_on_delete(self, *args):
         on_delete = getattr(self.remote_field, 'on_delete', None)
-        if on_delete in (SET_NULL, SET_DEFAULT):
+        if on_delete in VALUE_MODIFYING_ON_DELETE:
             return [
                 checks.Error(
                     'A shared reference field specifies an on_delete rule which would make it change automatically.',
@@ -162,7 +171,7 @@ class VirtualForeignKey(ForeignKey):
                 )
             ]
         else:
-            return []
+            return super()._check_on_delete(*args)
 
     def deconstruct(self):
         """
